@@ -333,9 +333,9 @@ const view: View<S> = F => async s => {
       }, `... ${s.maxPages} páginas`),
     ])]: [],
     structuredData,
-    ...s.randomFetched ? [
+    ...s.randomFetched && s.filteredCompanies.length === 0 ? [
       h('div', {class: { [style.randomContainer]: true }}, [
-        h('div', {class: { [style.randomDescription]: true }}, `Aquí una muestra. Somos más de ${s.companiesCount} empresas!`),
+        h('div', {class: { [style.randomDescription]: true }}, `Aquí una muestra de 3 ¡Somos más de ${s.companiesCount} empresas!`),
         await F.vw('Company1'),
         await F.vw('Company2'),
         await F.vw('Company3'),

@@ -12,6 +12,7 @@ Tareas de desarrollo
 
 ## Tareas Frontend
 
+- Habilitar el HMR y probarlo
 - Sistema de Modales para reemplazar los alerts
 - Mejorar el sistema de metainformación
 - Open Graph en pagina principal
