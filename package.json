@@ -45,6 +45,7 @@
     "lighthouse": "^2.3.0",
     "nodemon": "^1.14.11",
     "tslint": "^5.9.1",
-    "typescript": "^2.7.0-dev.20180120"
+    "typescript": "^2.7.0-dev.20180120",
+    "uglify-es": "^3.3.7"
   }
 }

@@ -47,7 +47,7 @@ Sparky.task('config', () => {
         target: 'browser',
         treeshake: true,
         replaceTypeOf: false,
-        // uglify: true,
+        uglify: { es6: true },
       }),
     ],
   })
@@ -106,7 +106,7 @@ Sparky.task('server-bundle', () => {
         bakeApiIntoBundle: 'index',
         containedAPI: true,
         treeshake: true,
-        uglify: true,
+        uglify: { es6: true },
       }),
     ],
   })
@@ -150,7 +150,7 @@ Sparky.task('aot', () => {
   })
 })
 
-Sparky.task('dist', ['clean', 'clean-cache', 'set-production-env', 'config', 'copy-files', 'server-bundle', 'aot', 'run-server'], () => {
+Sparky.task('dist', ['clean', 'clean-cache', 'set-production-env', 'config', 'copy-files', 'server-bundle'/*, 'aot'*/, 'run-server'], () => {
   fuse.dev({ port: 3000 }, setupServer)
   fuseServer.run()
   return fuse.run()
