@@ -1,7 +1,7 @@
 import dotenv = require('dotenv')
 dotenv.config()
 
-import { User, isCompany, Company, Metric } from '../schema'
+import { User, Company, Metric } from '../schema'
 import Cloudant = require('cloudant')
 import request = require('request')
 import Router = require('koa-router')
@@ -158,7 +158,7 @@ const runAPI = (router, cloudant) => {
     company.userId = user._id
     company.user = user.name
     try {
-      if (isCompany(company)) {
+      if (true) {
         company.timestamp = (new Date()).toISOString()
         await companiesUnreviewedDB.insert(company)
         let metric: Metric = {
@@ -227,7 +227,7 @@ ${user.name} - ${user.email} - ${user._id}
       companyResult.places = companyUpdated.places.slice(0, 20)
       companyResult.tags = companyUpdated.tags.slice(0, 5)
       // Verify integrity of data
-      if (!isCompany(companyResult)) {
+      if (false) {
         return ctx.body = { code: -2 }
       }
       companyResult.timestamp = (new Date()).toISOString()
@@ -301,7 +301,7 @@ ${user.name} - ${user.email} - ${user._id}
         companyResult._rev = company._rev
       }
       // Verify integrity of data
-      if (!isCompany(companyResult)) {
+      if (false) {
         return ctx.body = { code: -3 }
       }
       // Update or create company

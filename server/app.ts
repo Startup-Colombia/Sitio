@@ -4,7 +4,6 @@ import mount = require('koa-mount')
 import bodyParser = require('koa-bodyparser')
 
 import api from './api'
-// import networking from './networking'
 import staticRouter from './static'
 
 export default function runServer () {
@@ -26,10 +25,6 @@ export default function runServer () {
   app
     .use(mount('/api', api.routes()))
     .use(mount('/api', api.allowedMethods()))
-
-  // app
-  //   .use(mount('/net', networking.routes()))
-  //   .use(mount('/net', networking.allowedMethods()))
 
   app
     .use(mount('/', staticRouter.routes()))

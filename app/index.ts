@@ -4,7 +4,7 @@ import * as Root from './Root'
 import { setDev } from './config'
 // import './hmr'
 
-let DEV = !process.env.isProduction
+let DEV = false // !process.env.isProduction
 
 setDev(DEV)
 
