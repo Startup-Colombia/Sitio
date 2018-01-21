@@ -6,7 +6,6 @@ import { renderHTML } from 'fractal-core/utils/ssr'
 import { strToLink } from '../app/utils'
 import { getKeywords } from './utils'
 import { Company } from '../schema/index'
-import keywordsBase = require('../../../SEO/keywords.json')
 
 import { runModule } from '../app/module'
 import * as Root from '../app/Root'
@@ -14,7 +13,7 @@ import * as Root from '../app/Root'
 let staticRouter = new Router()
 
 try {
-  let html = fs.readFileSync('./app/index.ejs', 'utf8')
+  let html = fs.readFileSync('./app/index.html', 'utf8')
   let css = fs.readFileSync('./app/styles.css', 'utf8')
 
   staticRouter.get('/:name', async ctx => {
@@ -46,7 +45,7 @@ try {
         }
       }
       let companyOriginal: Company = company
-      let keywords: any = keywordsBase
+      let keywords = []
       if (!company) {
         company = { name }
       } else if (company.description) {
@@ -58,7 +57,7 @@ try {
       ctx.body = await renderHTML({
         root: Root,
         runModule,
-        bundlePaths: ['bundle.js'],
+        bundlePaths: [],
         lang: 'es',
         html,
         css,

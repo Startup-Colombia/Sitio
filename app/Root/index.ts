@@ -119,7 +119,7 @@ export const inputs: Inputs = F => ({
           }
           localStorage.setItem('token', token)
           await F.toAct('SetToken', token)
-          fbq('track', 'CompleteRegistration') // FB Pixel
+          // fbq('track', 'CompleteRegistration') // FB Pixel
           try {
             await F.toIt('fetchUser', token)
           } catch (err) {
@@ -128,7 +128,11 @@ export const inputs: Inputs = F => ({
             }
           }
         })
-        .catch(() => alert('Hay un problema, lo resolveré prontamente'))
+        .catch((err) => {
+          console.clear()
+          console.error(err)
+          alert('Hay un problema, lo resolveré prontamente')
+        })
       })
     })
     hello.on('auth.logout', async () => {

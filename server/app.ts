@@ -21,7 +21,7 @@ export default function runServer () {
 
   app.use((<any> bodyParser)())
 
-  app.use(serve('aot'))
+  app.use(serve('dist/public'))
 
   app
     .use(mount('/api', api.routes()))

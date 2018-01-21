@@ -7,6 +7,7 @@ Tareas de desarrollo
 - Documetar estructura del proyecto
 - Documentar pruebas Lighthouse (velocidad, usabilidad, accesibilidad, buenas prácticas)
 - Reestablecer el server side rendering, temporalmente deshabilitado (CRITICO)
+- Hacer code splitting entre modulos
 
 ## Tareas Frontend
 

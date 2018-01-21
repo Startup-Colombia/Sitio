@@ -61,9 +61,8 @@ Sparky.task('config', () => {
 })
 
 // main task
-Sparky.task('default', ['clean', 'config', 'copy-files'], () => {
-  // Sparky.task('default', ['clean', 'config', 'copy-files', 'server-bundle', 'run-server'], () => {
-  fuse.dev({ port: 3001 }, setupServer)
+Sparky.task('default', ['clean', 'config', 'copy-files', 'server-bundle', 'run-server'], () => {
+  fuse.dev({ port: 3000 }, setupServer)
   let typeHelper = TypeHelper({
     tsConfig: './tsconfig.json',
     basePath:'.',
@@ -73,9 +72,9 @@ Sparky.task('default', ['clean', 'config', 'copy-files'], () => {
     console.log(`\x1b[36m%s\x1b[0m`, `client bundled`)
     typeHelper.runSync()
   })
-  // server.watch('server/**/**')
+  server.watch('server/**/**')
 
-  // fuseServer.run()
+  fuseServer.run()
   return fuse.run()
 })
 
@@ -152,7 +151,7 @@ Sparky.task('aot', () => {
 })
 
 Sparky.task('dist', ['clean', 'clean-cache', 'set-production-env', 'config', 'copy-files', 'server-bundle', 'aot', 'run-server'], () => {
-  fuse.dev({ port: 3001 }, setupServer)
+  fuse.dev({ port: 3000 }, setupServer)
   fuseServer.run()
   return fuse.run()
 })
@@ -162,7 +161,7 @@ Sparky.task('run-server', () => {
 
 function runServer () {
   const spawn = require('cross-spawn'),
-  serverCmd = spawn( './node_modules/.bin/nodemon', [ 'dist/server/index.js' ] )
+  serverCmd = spawn('./node_modules/.bin/nodemon', [ '--inspect', '--watch', 'dist/server/*.*', 'dist/server/index.js' ])
   serverCmd.stdout.on( 'data', data => {
     console.log( `stdout: ${data}` )
   })
@@ -174,4 +173,4 @@ function runServer () {
   })
 }
 
-// runServer()
+runServer()
