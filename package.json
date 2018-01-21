@@ -1,0 +1,50 @@
+{
+  "name": "startupcol-com",
+  "version": "0.2.4",
+  "description": "Site for startupcol.com",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app"
+  },
+  "author": "Carlos Galarza <carloslfu@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "node": "8.0.0"
+  },
+  "private": true,
+  "dependencies": {
+    "cloudant": "^1.10.0",
+    "dotenv": "^4.0.0",
+    "fractal-core": "^4.4.5",
+    "hellojs": "^1.16.1",
+    "jsonwebtoken": "^7.4.1",
+    "jwt-decode": "^2.2.0",
+    "kcors": "^2.2.1",
+    "keyword-extractor": "0.0.14",
+    "koa": "^2.3.0",
+    "koa-bodyparser": "^4.2.0",
+    "koa-jwt": "^3.2.2",
+    "koa-mount": "^3.0.0",
+    "koa-router": "^7.2.1",
+    "koa-static": "^3.0.0",
+    "nodemailer": "^4.0.1",
+    "request": "^2.81.0",
+    "snabbdom-to-html": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^7.0.46",
+    "@types/promise": "^7.1.30",
+    "cross-spawn": "^5.1.0",
+    "fs-jetpack": "^1.2.0",
+    "fuse-box": "^2.4.0",
+    "fuse-box-typechecker": "^2.7.0",
+    "grunt": "^1.0.1",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-watch": "^1.0.0",
+    "grunt-exec": "^2.0.0",
+    "lighthouse": "^2.3.0",
+    "nodemon": "^1.14.11",
+    "tslint": "^5.9.1",
+    "typescript": "^2.7.0-dev.20180120"
+  }
+}
