@@ -296,7 +296,7 @@ const view: View<S> = F => async s => {
       h('button', {
         class: { [style.authBtn]: true },
         on: { click: F.in('login') },
-      }, '¡Unete!'),
+      }, '¡Únete!'),
     ]),
     h('input', {
       class: { [style.searchInput]: true },

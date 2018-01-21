@@ -1680,7 +1680,7 @@ const view = F => async (s) => {
             view_1.h('button', {
                 class: { [style.authBtn]: true },
                 on: { click: F.in('login') },
-            }, '¡Unete!'),
+            }, '¡Únete!'),
         ]),
         view_1.h('input', {
             class: { [style.searchInput]: true },
