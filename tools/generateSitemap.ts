@@ -38,10 +38,10 @@ request(
 
     let sitemap = generateSitemap(pages)
 
-    fs.unlink('./aot/sitemap.xml', err => {
-      fs.writeFile('./aot/sitemap.xml', sitemap, { flag: 'wx' }, err => {
+    fs.unlink('./dist/public/sitemap.xml', err => {
+      fs.writeFile('./dist/public/sitemap.xml', sitemap, { flag: 'wx' }, err => {
         if (err) throw err
-        console.log('Guardado en archivo ./aot/sitemap.xml')
+        console.log('Guardado en archivo ./dist/public/sitemap.xml')
       })
     })
   }

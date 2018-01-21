@@ -1,5 +1,7 @@
 # Desarrollo
 
+(Actualmente roto, se requiere entorno de desarrollo, ver tareas...)
+
 Documentación de las diferentes tareas de desarrollo
 
 ## Como levantar el entorno de desarrollo?

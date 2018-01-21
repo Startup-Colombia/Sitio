@@ -4,6 +4,8 @@ Tareas de desarrollo
 
 ## Generales
 
+- Crear base de datos y credenciales para desarrollo
+- Crear modo de desarrollo
 - Documetar estructura del proyecto
 - Documentar pruebas Lighthouse (velocidad, usabilidad, accesibilidad, buenas prácticas)
 
