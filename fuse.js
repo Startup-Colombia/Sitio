@@ -150,13 +150,13 @@ Sparky.task('aot', () => {
   })
 })
 
-Sparky.task('dist', ['clean', 'clean-cache', 'set-production-env', 'config', 'copy-files', 'server-bundle'/*, 'aot'*/, 'run-server'], () => {
-  fuse.dev({ port: 3000 }, setupServer)
+Sparky.task('dist', ['clean', 'clean-cache', 'set-production-env', 'config', 'copy-files', 'server-bundle'/*, 'aot'*/], () => {
   fuseServer.run()
   return fuse.run()
 })
 
 Sparky.task('run-server', () => {
+  runServer()
 })
 
 function runServer () {
@@ -172,5 +172,3 @@ function runServer () {
     console.log( `child process exited with code ${code}` )
   })
 }
-
-runServer()
