@@ -300,7 +300,7 @@ const view: View<S> = F => async s => {
     ]),
     h('input', {
       class: { [style.searchInput]: true },
-      attrs: { type: 'text', placeholder: 'Busca en nuestra lista de empresas' },
+      attrs: { type: 'text', placeholder: 'Lista de empresas...' },
       props: { value: s.searchText },
       on: {
         keyup: F.in('searchInputKeyup', _, ['target', 'value']),
@@ -386,12 +386,12 @@ const style: StyleGroup = {
   },
   authBtn: {
     marginBottom: '20px',
-    padding: '10px 15px',
+    padding: '10px 24px',
     background: 'none',
     border: 'none',
-    fontSize: '28px',
+    fontSize: '30px',
     color: 'white',
-    borderRadius: '5px',
+    borderRadius: '7px',
     backgroundColor: palette.secondary,
     ...clickable,
     $nest: {

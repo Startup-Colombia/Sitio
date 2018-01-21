@@ -101,13 +101,13 @@ Sparky.task('server-bundle', () => {
     plugins: [
       JSONPlugin(),
       EnvPlugin({ isProduction }),
-      isProduction && QuantumPlugin({
-        target: 'npm',
-        bakeApiIntoBundle: 'index',
-        containedAPI: true,
-        treeshake: true,
-        uglify: { es6: true },
-      }),
+      // isProduction && QuantumPlugin({
+      //   target: 'npm',
+      //   bakeApiIntoBundle: 'index',
+      //   containedAPI: true,
+      //   treeshake: true,
+      //   uglify: { es6: true },
+      // }),
     ],
   })
   server = fuseServer

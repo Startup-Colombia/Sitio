@@ -13,7 +13,7 @@ import * as Root from '../app/Root'
 let staticRouter = new Router()
 
 try {
-  let html = fs.readFileSync('./app/index.html', 'utf8')
+  let html = fs.readFileSync('./app/aot.html', 'utf8')
   let css = fs.readFileSync('./app/styles.css', 'utf8')
 
   staticRouter.get('/:name', async ctx => {

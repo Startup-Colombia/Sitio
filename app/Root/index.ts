@@ -119,7 +119,7 @@ export const inputs: Inputs = F => ({
           }
           localStorage.setItem('token', token)
           await F.toAct('SetToken', token)
-          // fbq('track', 'CompleteRegistration') // FB Pixel
+          fbq('track', 'CompleteRegistration') // FB Pixel
           try {
             await F.toIt('fetchUser', token)
           } catch (err) {

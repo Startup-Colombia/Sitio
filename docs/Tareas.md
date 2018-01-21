@@ -8,6 +8,7 @@ Tareas de desarrollo
 - Crear modo de desarrollo
 - Documetar estructura del proyecto
 - Documentar pruebas Lighthouse (velocidad, usabilidad, accesibilidad, buenas prácticas)
+- Mejorar y optimizar código
 
 ## Tareas Frontend
 
