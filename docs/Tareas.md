@@ -6,15 +6,15 @@ Tareas de desarrollo
 
 - Documetar estructura del proyecto
 - Documentar pruebas Lighthouse (velocidad, usabilidad, accesibilidad, buenas prácticas)
-- Reestablecer el server side rendering, temporalmente deshabilitado (CRITICO)
-- Hacer code splitting entre modulos
 
 ## Tareas Frontend
 
 - Sistema de Modales para reemplazar los alerts
-- Mjorar el sistema de metainformación
+- Mejorar el sistema de metainformación
 - Open Graph en pagina principal
 - Open Graph en paginas de empresas
+- Habilitar el prerendering
+- Hacer code splitting entre modulos
 - Imagenes para los sitios de las empresas
 - Mejorar los sitios de las empresas y hacerlos mas personalizados (color, interacción, embeds, widgets)
 - Sección FAQ (Repositorio de conocimiento)
