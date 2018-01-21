@@ -1,0 +1,30 @@
+/* Global styles */
+
+html, body {
+  box-sizing: border-box;
+  margin: 0px;
+  width: 100%;
+  height: 100%;
+}
+#app {
+  width: 100%;
+  height: 100%;
+}
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+/* App styles (fonts and other globals) */
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Open Sans', sans-serif;
+  background-color: #1A69EE;
+}
+
+h1 {
+  color: white;
+  font-size: 20px;
+}
