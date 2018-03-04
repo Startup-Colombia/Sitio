@@ -224,7 +224,10 @@ const view: View<S> = F => async s => {
     h('header', {
       class: style('header'),
     }, [
-      h('div', {class: style('titulo')}, [
+      h('a', {
+        class: style('titulo'),
+        attrs: {  href: '/' },
+      }, [
         h('img', {
           class: style('tituloImagen'),
           attrs: { src: 'assets/favicon.png', alt: 'startup colombia', itemprop: 'image' },
