@@ -12,9 +12,7 @@ Requerimientos:
 
 Levantar entorno:
 
-- En una ventana de comandos se corre el frontend: `npm run start-dev`
-- En una ventana de comandos se corre el compilador automatico del backend (TS a JS): `npm run watch-server`
-- En una ventana de comandos se corre el backend: `nodemon server/build/server`
+- Abrir `node fuse` en una ventana de comandos
 - Abrir `localhost:3000` en el navegador
 - Abre la carpeta del proyecto en Visual Studio Code (editor recomendado)
 - Listo, manos a la obra!
