@@ -11,8 +11,8 @@ Estructura:
 - Seccion de miembros (Dashboard)
 - Metricas de paginas de las empresas (Lighthouse)
 
-Para contribuir al proyecto con ideas, propuestas, para reportar un bug sigue estos pasos:
+Para contribuir al proyecto con ideas, propuestas y para reportar un bug sigue estos pasos:
 
-- Entra a nuestro chat y comentalo con nuestro equipo
+- Entra a nuestro chat y comentalo con nuestro equipo [aquí](https://gitter.im/Startup-Colombia/Lobby)
 - Si no se soluciona, puedes crear un issue
-- Y por supuesto si te gusta el desarrollo, puedes contribuir con PRs
+- Y por supuesto si te gusta el desarrollo puedes contribuir con PRs
