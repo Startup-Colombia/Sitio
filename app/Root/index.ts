@@ -25,6 +25,7 @@ import * as Main from './Main'
 import * as Dashboard from './Dashboard'
 import * as Admin from './Admin'
 import * as Site from './Site'
+import * as Stats from './Stats'
 
 export const name = 'Root'
 
@@ -33,11 +34,12 @@ export const components: Components = {
   Dashboard,
   Admin,
   Site,
+  Stats,
 }
 
 export const state = {
   section: 'Main', // 'Main' | 'Site'
-  route: 'Main', // 'Main' | 'Dashboard' | 'Admin'
+  route: 'Main', // 'Main' | 'Dashboard' | 'Admin' | 'Stats'
   token: '',
   name: '',
   picture: '',
@@ -50,6 +52,9 @@ export async function routeToComp (hash: string, F) {
   if (hash === '#-panel') {
     await F.toIt('setRoute', 'Dashboard')
     await F.toChild('Dashboard', 'setActive')
+  } if (hash === '#-stats') {
+    await F.toIt('setRoute', 'Stats')
+    await F.toChild('Stats', 'setActive')
   } else if (hash === '#-admin-s34-2343') {
     await F.toIt('setRoute', 'Admin')
     await F.toChild('Admin', 'setActive')
@@ -247,6 +252,7 @@ const view: View<S> = F => async s => {
             [
               ['Panel de Control', '#-panel', 'Dashboard'],
               ['Lista', '#', 'Main'],
+              ['Estadísticas', '#-stats', 'Stats'],
             ].map(
               ([op, hash, route]) => h('div', {
                 class: style(
