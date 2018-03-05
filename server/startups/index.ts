@@ -114,16 +114,17 @@ export const runStartupsAPI = cloudant => {
       }
     }
 
-    // Se guardan datos en Cloudant
+    // Se eliminan datos anteriores y guardan los nuevos en Cloudant
 
-    await startupsDB.insert({
-      _id: 'startups',
-      titles,
-      startups,
-    })
+    const startupsDoc = await startupsDB.get('startups')
+    startupsDoc.titles = titles
+    startupsDoc.list = startups
+    await startupsDB.insert(startupsDoc)
 
+    const statsDoc = await startupsDB.get('stats')
     await startupsDB.insert({
       _id: 'stats',
+      _rev: statsDoc._rev,
       ...stats,
     })
 
