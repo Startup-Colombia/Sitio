@@ -55,6 +55,7 @@ export const components: Components = {
 
 export const state = {
   online: true,
+  auth: false,
   searchState: 'wait',
   searchTimeout: -1,
   companiesPerPage: 20,
@@ -86,6 +87,9 @@ export const setSearchString = (text: string, filterName: string) => {
 }
 
 export const inputs: Inputs = F => ({
+  setAuth: async auth => {
+    F.set('auth', auth)
+  },
   initEmpresas: async ([empresas, maxCompanies, bookmark]) => {
     let empresasVisible = clone(empresas)
     await F.toIt('setFilteredCompanies', [clone(empresasVisible), maxCompanies, bookmark])
@@ -289,10 +293,12 @@ const view: View<S> = F => async s => {
       h('p', {class: { [style.descripcion]: true }}, [
         <any> 'Comunidad de empresas de base tecnológica',
       ]),
-      h('button', {
-        class: { [style.authBtn]: true },
-        on: { click: F.in('login') },
-      }, '¡Únete!'),
+      ...s.auth ? [] : [
+        h('button', {
+          class: { [style.authBtn]: true },
+          on: { click: F.in('login') },
+        }, '¡Únete!'),
+      ],
     ]),
     h('input', {
       class: { [style.searchInput]: true },
@@ -387,8 +393,9 @@ const style: StyleGroup = {
     border: 'none',
     fontSize: '30px',
     color: 'white',
-    borderRadius: '7px',
+    borderRadius: '27px',
     backgroundColor: palette.actionColor,
+    transition: 'background-color 0.3s',
     ...clickable,
     $nest: {
       '&:hover': {

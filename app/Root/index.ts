@@ -98,8 +98,9 @@ export const inputs: Inputs = F => ({
     let token = localStorage.getItem('token')
     if (token) {
       try {
-        await F.toIt('fetchUser', token)
-        await F.toAct('SetToken', token)
+        F.toIt('fetchUser', token)
+        F.toAct('SetToken', token)
+        F.toChild('Main', 'setAuth', true)
         return
       } catch (err) {
         if (err === '401') {
@@ -119,6 +120,7 @@ export const inputs: Inputs = F => ({
           }
           localStorage.setItem('token', token)
           await F.toAct('SetToken', token)
+          F.toChild('Main', 'setAuth', true)
           fbq('track', 'CompleteRegistration') // FB Pixel
           try {
             await F.toIt('fetchUser', token)
@@ -137,6 +139,7 @@ export const inputs: Inputs = F => ({
     })
     hello.on('auth.logout', async () => {
       await F.toAct('SetToken', '')
+      F.toChild('Main', 'setAuth', false)
       localStorage.removeItem('token')
     })
   },
@@ -197,6 +200,7 @@ export const inputs: Inputs = F => ({
     await F.toChild('Dashboard', 'logout')
     await F.toIt('setHash', '#')
     await F.toAct('SetToken', '')
+    F.toChild('Main', 'setAuth', false)
     localStorage.removeItem('token')
   },
   $Dashboard_login: async () => await F.toIt('login'),
