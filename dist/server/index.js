@@ -777,7 +777,7 @@ exports.runStartupsAPI = cloudant => {
                         .join(' ');
                 }
                 if (!value) {
-                    value = 'Otro / Ninguno';
+                    break;
                 }
                 if (!stat[value]) {
                     stat[value] = 1;
@@ -817,7 +817,9 @@ exports.runStartupsAPI = cloudant => {
         await startupsDB.insert({
             _id: 'stats',
             _rev: statsDoc._rev,
+            length: startups.length,
             list: stats,
+            timestamp: (new Date()).getTime(),
         });
         ctx.body = 'Se realizó la actualización con éxito';
     });
@@ -3992,10 +3994,14 @@ ___scope___.file("app/Root/Stats.js", function(exports, require, module, __filen
 Object.defineProperty(exports, "__esModule", { value: true });
 const fractal_core_1 = require("fractal-core");
 const view_1 = require("fractal-core/interfaces/view");
+const constants_1 = require("./constants");
+const format = require("date-fns/format");
+const es = require("date-fns/locale/es");
 const JoinToSee = require("./common/JoinToSee");
 const Chart = require("./common/Chart");
-const constants_1 = require("./constants");
 exports.state = {
+    num: 0,
+    lastUpdated: 0,
     charts: [],
     _nest: { JoinToSee },
     _compUpdated: false,
@@ -4006,6 +4012,9 @@ exports.inputs = F => ({
             .then(r => r.json());
         let s = F.stateOf();
         let len = s.charts.length;
+        F.set('num', response.length);
+        const lastUpdated = format(new Date(response.timestamp), 'DD/MM/YYYY HH:MM:SS', { locale: es });
+        F.set('lastUpdated', lastUpdated);
         F.toAct('AddCharts', response.list);
         if (len > 0) {
             for (let chartName of s.charts) {
@@ -4041,11 +4050,10 @@ const view = F => async (s) => {
     }, [
         view_1.h('div', { class: style('title') }, 'Estadísticas de las Startups Digitales'),
         view_1.h('div', { class: style('description') }, [
-            'Los datos provienen del ',
-            view_1.h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://docs.google.com/spreadsheets/d/1gn-wJpq_kxhGbByp76Sc3drJxXNDAVRiNjJy87HJ7Uc/edit#gid=0' } }, 'directorio de startups digitales'),
-            ' mantenido activamente por ',
-            view_1.h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://www.facebook.com/camilotravel' } }, 'Camilo Galeano'),
-            ' quien hace parte de nuestro equipo.',
+            `Este estudio contempla ${s.num} Startups Digitales en Colombia puede consultar la fuente `,
+            view_1.h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://docs.google.com/spreadsheets/d/1gn-wJpq_kxhGbByp76Sc3drJxXNDAVRiNjJy87HJ7Uc/edit#gid=0' } }, 'acá'),
+            ` dicho documento es de libre edición, mantenido y curado por lo diferentes founders de la Comunidad Startup de manera permanente.`,
+            ` Ultima actualización ${s.lastUpdated}.`,
         ]),
         view_1.h('div', { class: style('charts') }, await fractal_core_1.mapAsync(s.charts, async (chartName) => view_1.h('div', { class: style('chart') }, [
             await F.vw(chartName)
