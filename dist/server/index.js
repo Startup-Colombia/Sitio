@@ -707,6 +707,7 @@ const fieldNames = [
     'founderProfile',
     'founderUniversity',
     'founderAge',
+    'founderGender',
 ];
 exports.runStartupsAPI = cloudant => {
     const startupsDB = cloudant.use('startups');
@@ -754,6 +755,7 @@ exports.runStartupsAPI = cloudant => {
             ['business', 'Por Tipo de Negocio', 'bar'],
             ['founderUniversity', 'Universidad del Fundador / CEO', 'horizontalBar'],
             ['founderAge', 'Edad del Fundador / CEO', 'bar'],
+            ['founderGender', 'Genero del Fundador / CEO', 'pie'],
         ];
         const stats = {};
         let startup, statInfo, statName, stat, value;
@@ -774,7 +776,7 @@ exports.runStartupsAPI = cloudant => {
                         .map(str => str.slice(0, 1).toUpperCase() + str.slice(1, str.length))
                         .join(' ');
                 }
-                if (value === undefined) {
+                if (!value) {
                     value = 'Otro / Ninguno';
                 }
                 if (!stat[value]) {
@@ -3994,18 +3996,12 @@ const JoinToSee = require("./common/JoinToSee");
 const Chart = require("./common/Chart");
 const constants_1 = require("./constants");
 exports.state = {
-    token: '',
     charts: [],
     _nest: { JoinToSee },
     _compUpdated: false,
 };
 exports.inputs = F => ({
     setActive: async () => {
-        const token = localStorage.getItem('token');
-        F.set('token', token);
-        if (!token) {
-            return;
-        }
         const response = await fetch('https://1ec8c733-54bd-44c9-aafd-cd14edb80cf1-bluemix.cloudant.com/startups/stats')
             .then(r => r.json());
         let s = F.stateOf();
@@ -4039,7 +4035,7 @@ exports.actions = {
 };
 const view = F => async (s) => {
     let style = fractal_core_1.getStyle(F);
-    return s.token ? view_1.h('div', {
+    return view_1.h('div', {
         key: F.ctx.name,
         class: style('base'),
     }, [
@@ -4054,7 +4050,7 @@ const view = F => async (s) => {
         view_1.h('div', { class: style('charts') }, await fractal_core_1.mapAsync(s.charts, async (chartName) => view_1.h('div', { class: style('chart') }, [
             await F.vw(chartName)
         ]))),
-    ]) : await F.vw('JoinToSee');
+    ]);
 };
 exports.interfaces = { view };
 const style = {
@@ -4124,10 +4120,7 @@ const createConfig = (s) => fractal_core_1.clone({
         datasets: [{ label: s.title, data: s.data, backgroundColor: s.backgroundColor }],
     },
     options: {
-        legend: {
-            display: s.type === 'pie',
-            defaultFontSize: 5,
-        },
+        maintainAspectRatio: false,
     },
 });
 exports.inputs = F => ({
@@ -4161,7 +4154,16 @@ const view = F => async (s) => {
             props: s.type === chartTypes[idx] ? { selected: 'selected' } : {},
         }, op))),
         view_1.h('div', { class: style('title') }, s.title),
-        view_1.h('canvas', { attrs: { id: F.ctx.id, width: '400', height: '400' } }),
+        view_1.h('div', {
+            class: style('container'),
+            style: {
+                height: s.type === 'horizontalBar' ? '700px' : '400px',
+            },
+        }, [
+            view_1.h('canvas', {
+                props: { id: F.ctx.id, width: '400', height: '400' },
+            }),
+        ]),
     ]);
 };
 exports.interfaces = { view };
@@ -4169,7 +4171,6 @@ const style = {
     base: {
         position: 'relative',
         width: '100%',
-        height: '100%',
         padding: '30px 20px 30px 20px',
         border: '1px dashed grey',
     },
@@ -4185,6 +4186,9 @@ const style = {
         padding: '3px',
         background: 'none',
         fontSize: '12px',
+    },
+    container: {
+        width: '100%',
     },
 };
 exports.groups = { style };
