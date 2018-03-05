@@ -11,6 +11,7 @@ import { View, h } from 'fractal-core/interfaces/view'
 
 import * as JoinToSee from './common/JoinToSee'
 import * as Chart from './common/Chart'
+import { palette } from './constants';
 
 export const state = {
   token: '',
@@ -63,6 +64,13 @@ const view: View<S> = F => async s => {
     class: style('base'),
   }, [
     h('div', { class: style('title') }, 'Estadísticas de las Startups Digitales'),
+    h('div', { class: style('description') }, [
+      <any> 'Los datos provienen del ',
+      h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://docs.google.com/spreadsheets/d/1gn-wJpq_kxhGbByp76Sc3drJxXNDAVRiNjJy87HJ7Uc/edit#gid=0' } }, 'directorio de startups digitales'),
+      <any> ' mantenido activamente por ',
+      h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://www.facebook.com/camilotravel' } }, 'Camilo Galeano'),
+      <any> ' quien hace parte de nuestro equipo.',
+    ]),
     h('div', { class: style('charts') },
       await mapAsync(s.charts,
         async chartName => h('div', { class: style('chart') }, [
@@ -77,16 +85,27 @@ export const interfaces: Interfaces = { view }
 
 const style: StyleGroup = {
   base: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
     flexShrink: 0,
     minHeight: 'calc(100% - 249px)',
     paddingBottom: '50px',
   },
   title: {
-    padding: '15px 10px',
+    padding: '25px 10px 15px 10px',
     textAlign: 'center',
     fontSize: '32px',
   },
+  description: {
+    padding: '10px',
+    fontSize: '20px',
+    textAlign: 'center',
+    maxWidth: '660px',
+    color: palette.textSecondary,
+  },
   charts: {
+    marginTop: '20px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -96,7 +115,7 @@ const style: StyleGroup = {
     width: '100%',
     maxWidth: '660px',
     flexShrink: 0,
-  }
+  },
 }
 
 export const groups = { style }
