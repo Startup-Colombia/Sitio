@@ -35,9 +35,12 @@ const createConfig = (s: S) => clone({
     labels: s.labels,
     datasets: [{ label: s.title, data: s.data, backgroundColor: s.backgroundColor }],
   },
-  options: s.type !== 'pie' ? {
-    legend: { display: false },
-  } : {},
+  options: {
+    legend: {
+      display: s.type === 'pie',
+      defaultFontSize: 5,
+    },
+  },
 })
 
 export const inputs: Inputs = F => ({

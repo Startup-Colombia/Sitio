@@ -238,7 +238,9 @@ export const inputs: Inputs = F => ({
     setSearchString(text, filterName)
     await F.toIt('search', text)
   },
-  login: async () => {},
+  login: async () => {
+    F.emit('login')
+  },
 })
 
 export const actions: Actions<S> = {
