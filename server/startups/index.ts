@@ -30,6 +30,7 @@ const fieldNames = [
   'founderProfile',
   'founderUniversity',
   'founderAge',
+  'founderGender',
 ]
 
 export const runStartupsAPI = cloudant => {
@@ -84,6 +85,7 @@ export const runStartupsAPI = cloudant => {
       ['business', 'Por Tipo de Negocio', 'bar'],
       ['founderUniversity', 'Universidad del Fundador / CEO', 'horizontalBar'],
       ['founderAge', 'Edad del Fundador / CEO', 'bar'],
+      ['founderGender', 'Genero del Fundador / CEO', 'pie'],
     ]
     const stats = {}
 
@@ -105,7 +107,7 @@ export const runStartupsAPI = cloudant => {
             .map(str => str.slice(0, 1).toUpperCase() + str.slice(1, str.length))
             .join(' ')
         }
-        if (value === undefined) {
+        if (!value) {
           value = 'Otro / Ninguno'
         }
         if (!stat[value]) {
