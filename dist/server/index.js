@@ -4050,9 +4050,11 @@ const view = F => async (s) => {
     }, [
         view_1.h('div', { class: style('title') }, 'Estadísticas de las Startups Digitales'),
         view_1.h('div', { class: style('description') }, [
-            `Este estudio contempla ${s.num} Startups Digitales en Colombia puede consultar la fuente `,
+            `Este estudio contempla `,
+            view_1.h('b', s.num.toString()),
+            ` Startups Digitales en Colombia puede consultar la fuente `,
             view_1.h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://docs.google.com/spreadsheets/d/1gn-wJpq_kxhGbByp76Sc3drJxXNDAVRiNjJy87HJ7Uc/edit#gid=0' } }, 'acá'),
-            ` dicho documento es de libre edición, mantenido y curado por lo diferentes founders de la Comunidad Startup de manera permanente.`,
+            ` dicho documento es de libre edición, mantenido y curado por los diferentes founders de la Comunidad Startup de manera permanente.`,
             ` Ultima actualización ${s.lastUpdated}.`,
         ]),
         view_1.h('div', { class: style('charts') }, await fractal_core_1.mapAsync(s.charts, async (chartName) => view_1.h('div', { class: style('chart') }, [
