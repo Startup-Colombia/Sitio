@@ -1500,6 +1500,7 @@ const style = {
     },
     footerAuthor: {
         padding: '15px 10px',
+        textAlign: 'center',
         fontSize: '16px',
         color: constants_1.palette.textTertiary,
         marginBottom: '4px',
@@ -1867,7 +1868,9 @@ exports.inputs = F => ({
         exports.setSearchString(text, filterName);
         await F.toIt('search', text);
     },
-    login: async () => { },
+    login: async () => {
+        F.emit('login');
+    },
 });
 exports.actions = {
     SetOnline: fractal_core_1.assoc('online'),
@@ -4120,9 +4123,12 @@ const createConfig = (s) => fractal_core_1.clone({
         labels: s.labels,
         datasets: [{ label: s.title, data: s.data, backgroundColor: s.backgroundColor }],
     },
-    options: s.type !== 'pie' ? {
-        legend: { display: false },
-    } : {},
+    options: {
+        legend: {
+            display: s.type === 'pie',
+            defaultFontSize: 5,
+        },
+    },
 });
 exports.inputs = F => ({
     init: async () => {
