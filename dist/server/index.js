@@ -685,13 +685,17 @@ const google = require("googleapis");
 const randomColor = require('randomcolor');
 const authorize_1 = require("./authorize");
 const sheets = google.sheets('v4');
-let google_sheets_credentials = process.env.google_sheets_credentials;
-let google_sheets_token = process.env.google_sheets_token;
+let google_sheets_credentials;
+let google_sheets_token;
 // Durente desarrollo las credenciales se traen de archivos
-if (!google_sheets_credentials) {
+if (!process.env.google_sheets_credentials) {
     const cwd = process.cwd();
     google_sheets_credentials = JSON.parse(fs.readFileSync(path.join(cwd, 'client_secret.json'), 'utf-8'));
     google_sheets_token = JSON.parse(fs.readFileSync(path.join(cwd, 'token.json'), 'utf-8'));
+}
+else {
+    google_sheets_credentials = JSON.parse(process.env.google_sheets_credentials);
+    google_sheets_token = JSON.parse(process.env.google_sheets_token);
 }
 const fieldNames = [
     'sector',
@@ -704,14 +708,6 @@ const fieldNames = [
     'founderUniversity',
     'founderAge',
 ];
-function getRandomColor() {
-    var letters = '0123456789ABCDEF'.split('');
-    var color = '#';
-    for (var i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 16)];
-    }
-    return color;
-}
 exports.runStartupsAPI = cloudant => {
     const startupsDB = cloudant.use('startups');
     let router = Router();
