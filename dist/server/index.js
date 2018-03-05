@@ -3989,6 +3989,7 @@ const fractal_core_1 = require("fractal-core");
 const view_1 = require("fractal-core/interfaces/view");
 const JoinToSee = require("./common/JoinToSee");
 const Chart = require("./common/Chart");
+const constants_1 = require("./constants");
 exports.state = {
     token: '',
     charts: [],
@@ -4033,6 +4034,13 @@ const view = F => async (s) => {
         class: style('base'),
     }, [
         view_1.h('div', { class: style('title') }, 'Estadísticas de las Startups Digitales'),
+        view_1.h('div', { class: style('description') }, [
+            'Los datos provienen del ',
+            view_1.h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://docs.google.com/spreadsheets/d/1gn-wJpq_kxhGbByp76Sc3drJxXNDAVRiNjJy87HJ7Uc/edit#gid=0' } }, 'directorio de startups digitales'),
+            ' mantenido activamente por ',
+            view_1.h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://www.facebook.com/camilotravel' } }, 'Camilo Galeano'),
+            ' quien hace parte de nuestro equipo.',
+        ]),
         view_1.h('div', { class: style('charts') }, await fractal_core_1.mapAsync(s.charts, async (chartName) => view_1.h('div', { class: style('chart') }, [
             await F.vw(chartName)
         ]))),
@@ -4041,16 +4049,27 @@ const view = F => async (s) => {
 exports.interfaces = { view };
 const style = {
     base: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         flexShrink: 0,
         minHeight: 'calc(100% - 249px)',
         paddingBottom: '50px',
     },
     title: {
-        padding: '15px 10px',
+        padding: '25px 10px 15px 10px',
         textAlign: 'center',
         fontSize: '32px',
     },
+    description: {
+        padding: '10px',
+        fontSize: '20px',
+        textAlign: 'center',
+        maxWidth: '660px',
+        color: constants_1.palette.textSecondary,
+    },
     charts: {
+        marginTop: '20px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -4060,7 +4079,7 @@ const style = {
         width: '100%',
         maxWidth: '660px',
         flexShrink: 0,
-    }
+    },
 };
 exports.groups = { style };
 //# sourceMappingURL=Stats.js.map
