@@ -23,6 +23,8 @@ export const palette = {
   shadowLighter: '#f2f2f2',
   borderLight: '#bfbfbf',
   borderGrey: '#ada8a9',
+  actionColor: '#1dc763',
+  actionColorLight: '#1bd668',
   // qualify
   red: '#ee1a1a',
   yellow: '#eed91a',

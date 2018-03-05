@@ -286,10 +286,6 @@ const view: View<S> = F => async s => {
     class: { [style.base]: true },
   }, [
     h('header', { class: { [style.header]: true } }, [
-      // h('h2', {
-      //   class: { [style.titulo]: true },
-      //   attrs: { itemprop: 'applicationCategory' },
-      // }, 'Lista de Empresas'),
       h('p', {class: { [style.descripcion]: true }}, [
         <any> 'Comunidad de empresas de base tecnológica',
       ]),
@@ -392,11 +388,11 @@ const style: StyleGroup = {
     fontSize: '30px',
     color: 'white',
     borderRadius: '7px',
-    backgroundColor: palette.secondary,
+    backgroundColor: palette.actionColor,
     ...clickable,
     $nest: {
       '&:hover': {
-        backgroundColor: palette.secondaryLight,
+        backgroundColor: palette.actionColorLight,
       },
     },
   },
