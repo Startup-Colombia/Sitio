@@ -37,7 +37,7 @@ export const inputs: Inputs = F => ({
   setFilter: async ([filterName, text]) => {},
   toSite: async s => {
     let id = strToLink(s.name)
-    await F.runIt(['route', ['/' + id, s]])
+    await F.task('route', ['/' + id, s])
   },
 })
 

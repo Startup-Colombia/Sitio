@@ -230,13 +230,13 @@ const view: View<S> = F => async s => {
       }, [
         h('img', {
           class: style('tituloImagen'),
-          attrs: { src: 'assets/favicon.png', alt: 'startup colombia', itemprop: 'image' },
+          attrs: { src: 'assets/favicon.png', alt: 'Startup Colombia', itemprop: 'image' },
         }),
         h('h1', {
           class: style('tituloText'),
         }, 'Startup Colombia'),
       ]),
-      h('div', {class: style('menu')}, [
+      h('div', { class: style('menu') }, [
         ...loggedIn
         ? [
           h('div', {class: style('routes')},
@@ -344,6 +344,7 @@ const style: StyleGroup = {
   titulo: {
     display: 'flex',
     alignItems: 'center',
+    textDecoration: 'none',
   },
   tituloImagen: {
     width: '120px',

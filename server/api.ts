@@ -1,6 +1,7 @@
 import dotenv = require('dotenv')
 dotenv.config()
 
+import mount = require('koa-mount')
 import { User, Company, Metric } from '../schema'
 import Cloudant = require('cloudant')
 import request = require('request')
@@ -9,6 +10,8 @@ import jwt = require('jsonwebtoken')
 import koaJWT = require('koa-jwt')
 import { deepmerge } from 'fractal-core/core'
 import { normalize, strToLink } from '../app/utils'
+
+import { runStartupsAPI } from './startups'
 
 var key = process.env.cloudant_key
 var password = process.env.cloudant_password
@@ -29,6 +32,12 @@ const runAPI = (router, cloudant) => {
   let metricsDB = cloudant.use('metrics')
 
   // --- API
+
+  // Se monta servicio de Startups
+
+  const startups = runStartupsAPI(cloudant)
+
+  router.use('/startups', startups.routes(), startups.allowedMethods())
 
   // PUBLIC
 
@@ -158,36 +167,32 @@ const runAPI = (router, cloudant) => {
     company.userId = user._id
     company.user = user.name
     try {
-      if (true) {
-        company.timestamp = (new Date()).toISOString()
-        await companiesUnreviewedDB.insert(company)
-        let metric: Metric = {
-          type: 'companyRequest',
-          userId: user._id,
-          companyId: '',
-          companyName: company.name,
-          timestamp: company.timestamp,
-        }
-        await metricsDB.insert(metric)
-        sendEmail({
-          from: '"Startup Colombia" soporte@startupcol.com',
-          to: 'carloslfu@gmail.com',
-          subject: 'Company Request - ' + company.name,
-          text: `
+      company.timestamp = (new Date()).toISOString()
+      await companiesUnreviewedDB.insert(company)
+      let metric: Metric = {
+        type: 'companyRequest',
+        userId: user._id,
+        companyId: '',
+        companyName: company.name,
+        timestamp: company.timestamp,
+      }
+      await metricsDB.insert(metric)
+      sendEmail({
+        from: '"Startup Colombia" soporte@startupcol.com',
+        to: 'carloslfu@gmail.com',
+        subject: 'Company Request - ' + company.name,
+        text: `
 ${company.name}
 
 ${user.name} - ${user.email} - ${user._id}
-  `
-        }, (error, info) => {
-          if (error) {
-              // return console.log(error)
-          }
-          // console.log('Message %s sent: %s', info.messageId, info.response)
-        })
-        return ctx.body = { code: 0 }
-      } else {
-        return ctx.body = { code: -4 }
-      }
+`
+      }, (error, info) => {
+        if (error) {
+            // return console.log(error)
+        }
+        // console.log('Message %s sent: %s', info.messageId, info.response)
+      })
+      return ctx.body = { code: 0 }
     } catch (err) {
       return ctx.body = { code: -5 }
     }

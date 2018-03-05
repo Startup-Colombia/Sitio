@@ -96,7 +96,7 @@ export const inputs: Inputs = F => ({
     var i = 0, empresaNext
     async function addCompany (empresa) {
       await F.toAct('AddCompany', empresa._id)
-      await F.toChild(empresa._id, 'setState', empresa, true)
+      await F.toChild(empresa._id, 'setState', empresa)
       i++
       empresaNext = empresas[i]
       if (empresaNext) {

@@ -32,7 +32,7 @@ export const inputs: Inputs = F => ({
     await F.toAct('SetState', state)
   },
   toSite: async route => {
-    await F.runIt(['route', [route]])
+    await F.task('route', [route])
   },
 })
 
