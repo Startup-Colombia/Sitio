@@ -1,5 +1,5 @@
 (function(FuseBox){FuseBox.$fuse$=FuseBox;
-var __process_env__ = {"isProduction":true};
+Object.assign(process.env, {"isProduction":true})
 FuseBox.pkg("default", {}, function(___scope___){
 ___scope___.file("server/index.js", function(exports, require, module, __filename, __dirname){
 
@@ -53,6 +53,7 @@ const jwt = require("jsonwebtoken");
 const koaJWT = require("koa-jwt");
 const core_1 = require("fractal-core/core");
 const utils_1 = require("../app/utils");
+const startups_1 = require("./startups");
 var key = process.env.cloudant_key;
 var password = process.env.cloudant_password;
 var jwt_secret = process.env.jwt_secret;
@@ -67,6 +68,9 @@ const runAPI = (router, cloudant) => {
     let companiesUnreviewedDB = cloudant.use('companies_unreviewed');
     let metricsDB = cloudant.use('metrics');
     // --- API
+    // Se monta servicio de Startups
+    const startups = startups_1.runStartupsAPI(cloudant);
+    router.use('/startups', startups.routes(), startups.allowedMethods());
     // PUBLIC
     router.post('/auth', async (ctx) => {
         let data;
@@ -192,37 +196,32 @@ const runAPI = (router, cloudant) => {
         company.userId = user._id;
         company.user = user.name;
         try {
-            if (true) {
-                company.timestamp = (new Date()).toISOString();
-                await companiesUnreviewedDB.insert(company);
-                let metric = {
-                    type: 'companyRequest',
-                    userId: user._id,
-                    companyId: '',
-                    companyName: company.name,
-                    timestamp: company.timestamp,
-                };
-                await metricsDB.insert(metric);
-                sendEmail({
-                    from: '"Startup Colombia" soporte@startupcol.com',
-                    to: 'carloslfu@gmail.com',
-                    subject: 'Company Request - ' + company.name,
-                    text: `
+            company.timestamp = (new Date()).toISOString();
+            await companiesUnreviewedDB.insert(company);
+            let metric = {
+                type: 'companyRequest',
+                userId: user._id,
+                companyId: '',
+                companyName: company.name,
+                timestamp: company.timestamp,
+            };
+            await metricsDB.insert(metric);
+            sendEmail({
+                from: '"Startup Colombia" soporte@startupcol.com',
+                to: 'carloslfu@gmail.com',
+                subject: 'Company Request - ' + company.name,
+                text: `
 ${company.name}
 
 ${user.name} - ${user.email} - ${user._id}
-  `
-                }, (error, info) => {
-                    if (error) {
-                        // return console.log(error)
-                    }
-                    // console.log('Message %s sent: %s', info.messageId, info.response)
-                });
-                return ctx.body = { code: 0 };
-            }
-            else {
-                return ctx.body = { code: -4 };
-            }
+`
+            }, (error, info) => {
+                if (error) {
+                    // return console.log(error)
+                }
+                // console.log('Message %s sent: %s', info.messageId, info.response)
+            });
+            return ctx.body = { code: 0 };
         }
         catch (err) {
             return ctx.body = { code: -5 };
@@ -675,6 +674,177 @@ exports.getServer = () => exports.config.DEV ? 'http://localhost:3001' : '';
 exports.cloudantURL = 'https://1ec8c733-54bd-44c9-aafd-cd14edb80cf1-bluemix.cloudant.com';
 //# sourceMappingURL=config.js.map
 });
+___scope___.file("server/startups/index.js", function(exports, require, module, __filename, __dirname){
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const fs = require("fs");
+const path = require("path");
+const Router = require("koa-router");
+const google = require("googleapis");
+const randomColor = require('randomcolor');
+const authorize_1 = require("./authorize");
+const sheets = google.sheets('v4');
+let google_sheets_credentials = process.env.google_sheets_credentials;
+let google_sheets_token = process.env.google_sheets_token;
+// Durente desarrollo las credenciales se traen de archivos
+if (!google_sheets_credentials) {
+    const cwd = process.cwd();
+    google_sheets_credentials = JSON.parse(fs.readFileSync(path.join(cwd, 'client_secret.json'), 'utf-8'));
+    google_sheets_token = JSON.parse(fs.readFileSync(path.join(cwd, 'token.json'), 'utf-8'));
+}
+const fieldNames = [
+    'sector',
+    'name',
+    'website',
+    'valueProposition',
+    'business',
+    'founderName',
+    'founderProfile',
+    'founderUniversity',
+    'founderAge',
+];
+function getRandomColor() {
+    var letters = '0123456789ABCDEF'.split('');
+    var color = '#';
+    for (var i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+exports.runStartupsAPI = cloudant => {
+    const startupsDB = cloudant.use('startups');
+    let router = Router();
+    const auth = authorize_1.authorize(google_sheets_credentials, google_sheets_token);
+    router.get('/refreshData', async (ctx) => {
+        if (ctx.request.query.token !== process.env.refreshStartupsDataToken) {
+            ctx.body = 'No estas autorizado ;)';
+            return;
+        }
+        const rows = await new Promise((resolve, reject) => sheets.spreadsheets.values.get({
+            auth: auth,
+            spreadsheetId: '1gn-wJpq_kxhGbByp76Sc3drJxXNDAVRiNjJy87HJ7Uc',
+            range: 'Hoja 1!A1:ZZ',
+        }, function (err, response) {
+            if (err) {
+                console.log('The API returned an error: ' + err);
+                reject(err);
+                return;
+            }
+            var rows = response.values;
+            resolve(rows);
+        }));
+        let titles;
+        const startups = [];
+        for (let i = 0, row; row = rows[i]; i++) {
+            let startup = {};
+            if (row[0] === undefined) {
+                break;
+            }
+            for (let j = 0, fieldName; fieldName = fieldNames[j]; j++) {
+                let value = row[j];
+                startup[fieldName] = value;
+            }
+            if (i === 0) {
+                titles = startup;
+            }
+            else {
+                startups.push(startup);
+            }
+        }
+        // Se calculan estadisticas, conteo de ocurrencias
+        const statsInfo = [
+            ['sector', 'Por Sectores', 'horizontalBar'],
+            ['business', 'Por Tipo de Negocio', 'bar'],
+            ['founderUniversity', 'Universidad del Fundador / CEO', 'horizontalBar'],
+            ['founderAge', 'Edad del Fundador / CEO', 'bar'],
+        ];
+        const stats = {};
+        let startup, statInfo, statName, stat, value;
+        for (startup of startups) {
+            for (statInfo of statsInfo) {
+                statName = statInfo[0];
+                if (!(statName in stats)) {
+                    stats[statName] = {};
+                }
+                stat = stats[statName];
+                value = startup[statName];
+                if (value) {
+                    // se colocan los valores en un formato común
+                    value = value
+                        .trim()
+                        .toLowerCase()
+                        .split(' ')
+                        .map(str => str.slice(0, 1).toUpperCase() + str.slice(1, str.length))
+                        .join(' ');
+                }
+                if (value === undefined) {
+                    value = 'Otro / Ninguno';
+                }
+                if (!stat[value]) {
+                    stat[value] = 1;
+                }
+                else {
+                    stat[value]++;
+                }
+            }
+        }
+        // Se preparan los datos para las gráficas
+        let labels, data, key, tempArr, backgroundColor;
+        for (statInfo of statsInfo) {
+            statName = statInfo[0];
+            stat = stats[statName];
+            tempArr = [];
+            for (key in stat) {
+                tempArr.push([stat[key], key, randomColor()]);
+            }
+            tempArr = tempArr.sort((a, b) => b[0] - a[0]);
+            data = tempArr.map(el => el[0]);
+            labels = tempArr.map(el => el[1]);
+            backgroundColor = tempArr.map(el => el[2]);
+            stats[statName] = {
+                title: statInfo[1],
+                type: statInfo[2],
+                labels,
+                data,
+                backgroundColor,
+            };
+        }
+        // Se guardan los nuevos datos en Cloudant
+        const startupsDoc = await startupsDB.get('startups');
+        startupsDoc.titles = titles;
+        startupsDoc.list = startups;
+        await startupsDB.insert(startupsDoc);
+        const statsDoc = await startupsDB.get('stats');
+        await startupsDB.insert({
+            _id: 'stats',
+            _rev: statsDoc._rev,
+            list: stats,
+        });
+        ctx.body = 'Se realizó la actualización con éxito';
+    });
+    return router;
+};
+//# sourceMappingURL=index.js.map
+});
+___scope___.file("server/startups/authorize.js", function(exports, require, module, __filename, __dirname){
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const googleAuth = require("google-auth-library");
+function authorize(credentials, token) {
+    var clientSecret = credentials.installed.client_secret;
+    var clientId = credentials.installed.client_id;
+    var redirectUrl = credentials.installed.redirect_uris[0];
+    var auth = new googleAuth();
+    var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
+    // Check if we have previously stored a token.
+    oauth2Client.credentials = token;
+    return oauth2Client;
+}
+exports.authorize = authorize;
+//# sourceMappingURL=authorize.js.map
+});
 ___scope___.file("server/static.js", function(exports, require, module, __filename, __dirname){
 
 "use strict";
@@ -854,9 +1024,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fractal_core_1 = require("fractal-core");
 const view_1 = require("fractal-core/interfaces/view");
 const style_1 = require("fractal-core/groups/style");
-exports.runModule = (Root, DEV, options) => fractal_core_1.run(Object.assign({ log: DEV, record: DEV, Root }, options, { groups: {
+exports.runModule = (Root, DEV, options) => fractal_core_1.run({
+    log: DEV,
+    record: DEV,
+    Root,
+    ...options,
+    groups: {
         style: style_1.styleHandler('', DEV),
-    }, tasks: {
+    },
+    tasks: {
         route: mod => {
             if (typeof window !== 'undefined') {
                 if (!window.ssrInitialized) {
@@ -883,9 +1059,12 @@ exports.runModule = (Root, DEV, options) => fractal_core_1.run(Object.assign({ l
                 dispose: () => { },
             };
         },
-    }, interfaces: {
+    },
+    interfaces: {
         view: view_1.viewHandler('#app'),
-    } }, DEV ? fractal_core_1.logFns : {}));
+    },
+    ...DEV ? fractal_core_1.logFns : {},
+});
 //# sourceMappingURL=module.js.map
 });
 ___scope___.file("app/Root/index.js", function(exports, require, module, __filename, __dirname){
@@ -904,12 +1083,14 @@ const Main = require("./Main");
 const Dashboard = require("./Dashboard");
 const Admin = require("./Admin");
 const Site = require("./Site");
+const Stats = require("./Stats");
 exports.name = 'Root';
 exports.components = {
     Main,
     Dashboard,
     Admin,
     Site,
+    Stats,
 };
 exports.state = {
     section: 'Main',
@@ -923,6 +1104,10 @@ async function routeToComp(hash, F) {
     if (hash === '#-panel') {
         await F.toIt('setRoute', 'Dashboard');
         await F.toChild('Dashboard', 'setActive');
+    }
+    if (hash === '#-stats') {
+        await F.toIt('setRoute', 'Stats');
+        await F.toChild('Stats', 'setActive');
     }
     else if (hash === '#-admin-s34-2343') {
         await F.toIt('setRoute', 'Admin');
@@ -949,6 +1134,7 @@ function authenticate(network, socialToken) {
 exports.inputs = F => ({
     init: async () => {
         if (typeof window !== 'undefined') {
+            F.on('login', F.in('login'));
             let hash = utils_1.extractId(window.location.href);
             let route = hash.split('/')[0];
             if (window.ssrInitialized) {
@@ -972,8 +1158,9 @@ exports.inputs = F => ({
         let token = localStorage.getItem('token');
         if (token) {
             try {
-                await F.toIt('fetchUser', token);
-                await F.toAct('SetToken', token);
+                F.toIt('fetchUser', token);
+                F.toAct('SetToken', token);
+                F.toChild('Main', 'setAuth', true);
                 return;
             }
             catch (err) {
@@ -994,6 +1181,7 @@ exports.inputs = F => ({
                     }
                     localStorage.setItem('token', token);
                     await F.toAct('SetToken', token);
+                    F.toChild('Main', 'setAuth', true);
                     fbq('track', 'CompleteRegistration'); // FB Pixel
                     try {
                         await F.toIt('fetchUser', token);
@@ -1013,6 +1201,7 @@ exports.inputs = F => ({
         });
         hello.on('auth.logout', async () => {
             await F.toAct('SetToken', '');
+            F.toChild('Main', 'setAuth', false);
             localStorage.removeItem('token');
         });
     },
@@ -1048,7 +1237,10 @@ exports.inputs = F => ({
             await F.toChild('Main', 'setActive');
         }
         else {
-            await F.toChild('Site', 'setActive', Object.assign({ fetched: true }, state.state));
+            await F.toChild('Site', 'setActive', {
+                fetched: true,
+                ...state.state,
+            });
             await F.toAct('SetSection', 'Site');
         }
     },
@@ -1072,10 +1264,9 @@ exports.inputs = F => ({
         await F.toChild('Dashboard', 'logout');
         await F.toIt('setHash', '#');
         await F.toAct('SetToken', '');
+        F.toChild('Main', 'setAuth', false);
         localStorage.removeItem('token');
     },
-    $Dashboard_login: async () => await F.toIt('login'),
-    $Main_login: async () => await F.toIt('login'),
 });
 exports.actions = {
     SetSection: fractal_core_1.assoc('section'),
@@ -1096,10 +1287,13 @@ const view = F => async (s) => {
             view_1.h('header', {
                 class: style('header'),
             }, [
-                view_1.h('div', { class: style('titulo') }, [
+                view_1.h('a', {
+                    class: style('titulo'),
+                    attrs: { href: '/' },
+                }, [
                     view_1.h('img', {
                         class: style('tituloImagen'),
-                        attrs: { src: 'assets/favicon.png', alt: 'startup colombia', itemprop: 'image' },
+                        attrs: { src: 'assets/favicon.png', alt: 'Startup Colombia', itemprop: 'image' },
                     }),
                     view_1.h('h1', {
                         class: style('tituloText'),
@@ -1111,6 +1305,7 @@ const view = F => async (s) => {
                             view_1.h('div', { class: style('routes') }, [
                                 ['Panel de Control', '#-panel', 'Dashboard'],
                                 ['Lista', '#', 'Main'],
+                                ['Estadísticas', '#-stats', 'Stats'],
                             ].map(([op, hash, route]) => view_1.h('div', {
                                 class: style('option', true, 'optionActive', route === s.route),
                                 on: { click: F.in('setHash', hash) },
@@ -1170,7 +1365,15 @@ const view = F => async (s) => {
 };
 exports.interfaces = { view };
 const style = {
-    base: Object.assign({ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', color: constants_1.palette.textPrimary, overflowY: 'scroll' }, constants_1.textStyle),
+    base: {
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        color: constants_1.palette.textPrimary,
+        overflowY: 'scroll',
+        ...constants_1.textStyle,
+    },
     header: {
         flexShrink: 0,
         position: 'relative',
@@ -1193,6 +1396,7 @@ const style = {
     titulo: {
         display: 'flex',
         alignItems: 'center',
+        textDecoration: 'none',
     },
     tituloImagen: {
         width: '120px',
@@ -1239,11 +1443,19 @@ const style = {
             },
         },
     },
-    option: Object.assign({ borderRadius: '2px', padding: '4px 8px', color: 'white', fontSize: '16px', fontWeight: 'bold' }, fractal_core_1.clickable, { $nest: {
+    option: {
+        borderRadius: '2px',
+        padding: '4px 8px',
+        color: 'white',
+        fontSize: '16px',
+        fontWeight: 'bold',
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 backgroundColor: constants_1.palette.primaryLight,
             },
-        } }),
+        },
+    },
     optionActive: {
         backgroundColor: constants_1.palette.primaryLight,
     },
@@ -1264,11 +1476,20 @@ const style = {
         height: '25px',
         borderRadius: '50%',
     },
-    auth: Object.assign({ marginLeft: '10px', padding: '4px 7px', borderRadius: '2px', color: 'white', fontSize: '16px', fontWeight: 'bold' }, fractal_core_1.clickable, { $nest: {
+    auth: {
+        marginLeft: '10px',
+        padding: '4px 7px',
+        borderRadius: '2px',
+        color: 'white',
+        fontSize: '16px',
+        fontWeight: 'bold',
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 backgroundColor: constants_1.palette.primaryLight,
             },
-        } }),
+        },
+    },
     footer: {
         flexShrink: 0,
         order: 1,
@@ -1358,6 +1579,8 @@ exports.palette = {
     shadowLighter: '#f2f2f2',
     borderLight: '#bfbfbf',
     borderGrey: '#ada8a9',
+    actionColor: '#1dc763',
+    actionColorLight: '#1bd668',
     // qualify
     red: '#ee1a1a',
     yellow: '#eed91a',
@@ -1365,14 +1588,25 @@ exports.palette = {
     // Colombia related
     redCol: '#CE1126',
 };
-exports.createBtnStyle = (mainColor, lightColor, textColor) => (Object.assign({ padding: '8px 10px', borderRadius: '4px', fontSize: '20px', color: textColor, backgroundColor: mainColor, border: 'none', outline: 'none' }, core_1.absoluteCenter, core_1.clickable, { $nest: {
+exports.createBtnStyle = (mainColor, lightColor, textColor) => ({
+    padding: '8px 10px',
+    borderRadius: '4px',
+    fontSize: '20px',
+    color: textColor,
+    backgroundColor: mainColor,
+    border: 'none',
+    outline: 'none',
+    ...core_1.absoluteCenter,
+    ...core_1.clickable,
+    $nest: {
         '&:hover': {
             backgroundColor: lightColor,
         },
         '&:focus': {
             backgroundColor: lightColor,
         },
-    } }));
+    },
+});
 exports.buttonPrimaryStyle = exports.createBtnStyle(exports.palette.primary, exports.palette.primaryLight, 'white');
 exports.buttonCancelStyle = exports.createBtnStyle(exports.palette.shadowLighter, exports.palette.shadowLight, exports.palette.textSecondary);
 exports.scrollBar = {
@@ -1391,11 +1625,23 @@ exports.scrollBar = {
         },
     },
 };
-exports.simpleInput = Object.assign({}, exports.textStyle, { width: '80%', margin: '5px 0', minWidth: '300px', padding: '8px', fontSize: '18px', outline: 'none', border: 'none', color: exports.palette.textPrimary, borderBottom: '1px solid ' + exports.palette.borderLight, $nest: {
+exports.simpleInput = {
+    ...exports.textStyle,
+    width: '80%',
+    margin: '5px 0',
+    minWidth: '300px',
+    padding: '8px',
+    fontSize: '18px',
+    outline: 'none',
+    border: 'none',
+    color: exports.palette.textPrimary,
+    borderBottom: '1px solid ' + exports.palette.borderLight,
+    $nest: {
         '&:focus': {
             borderBottom: '1px solid ' + exports.palette.primary,
         },
-    } });
+    },
+};
 //# sourceMappingURL=constants.js.map
 });
 ___scope___.file("app/Root/Main.js", function(exports, require, module, __filename, __dirname){
@@ -1443,6 +1689,7 @@ exports.components = {
 };
 exports.state = {
     online: true,
+    auth: false,
     searchState: 'wait',
     searchTimeout: -1,
     companiesPerPage: 20,
@@ -1469,6 +1716,9 @@ exports.setSearchString = (text, filterName) => {
     utils_1.changeSearchString(`q=${encodeURIComponent(text)}&filter=${encodeURIComponent(filterName)}`);
 };
 exports.inputs = F => ({
+    setAuth: async (auth) => {
+        F.set('auth', auth);
+    },
     initEmpresas: async ([empresas, maxCompanies, bookmark]) => {
         let empresasVisible = fractal_core_1.clone(empresas);
         await F.toIt('setFilteredCompanies', [fractal_core_1.clone(empresasVisible), maxCompanies, bookmark]);
@@ -1479,7 +1729,7 @@ exports.inputs = F => ({
         var i = 0, empresaNext;
         async function addCompany(empresa) {
             await F.toAct('AddCompany', empresa._id);
-            await F.toChild(empresa._id, 'setState', empresa, true);
+            await F.toChild(empresa._id, 'setState', empresa);
             i++;
             empresaNext = empresas[i];
             if (empresaNext) {
@@ -1670,17 +1920,15 @@ const view = F => async (s) => {
         class: { [style.base]: true },
     }, [
         view_1.h('header', { class: { [style.header]: true } }, [
-            // h('h2', {
-            //   class: { [style.titulo]: true },
-            //   attrs: { itemprop: 'applicationCategory' },
-            // }, 'Lista de Empresas'),
             view_1.h('p', { class: { [style.descripcion]: true } }, [
                 'Comunidad de empresas de base tecnológica',
             ]),
-            view_1.h('button', {
-                class: { [style.authBtn]: true },
-                on: { click: F.in('login') },
-            }, '¡Únete!'),
+            ...s.auth ? [] : [
+                view_1.h('button', {
+                    class: { [style.authBtn]: true },
+                    on: { click: F.in('login') },
+                }, '¡Únete!'),
+            ],
         ]),
         view_1.h('input', {
             class: { [style.searchInput]: true },
@@ -1761,19 +2009,43 @@ const style = {
             },
         },
     },
-    authBtn: Object.assign({ marginBottom: '20px', padding: '10px 24px', background: 'none', border: 'none', fontSize: '30px', color: 'white', borderRadius: '7px', backgroundColor: constants_1.palette.secondary }, fractal_core_1.clickable, { $nest: {
+    authBtn: {
+        marginBottom: '20px',
+        padding: '10px 24px',
+        background: 'none',
+        border: 'none',
+        fontSize: '30px',
+        color: 'white',
+        borderRadius: '27px',
+        backgroundColor: constants_1.palette.actionColor,
+        transition: 'background-color 0.3s',
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
-                backgroundColor: constants_1.palette.secondaryLight,
+                backgroundColor: constants_1.palette.actionColorLight,
             },
-        } }),
-    searchInput: Object.assign({ width: '95%', maxWidth: '500px', paddingBottom: '10px', border: 'none', fontSize: '28px', textAlign: 'center', color: constants_1.palette.textPrimary, borderBottom: '1px solid ' + constants_1.palette.borderLight, outline: 'none' }, constants_1.textStyle, { $nest: {
+        },
+    },
+    searchInput: {
+        width: '95%',
+        maxWidth: '500px',
+        paddingBottom: '10px',
+        border: 'none',
+        fontSize: '28px',
+        textAlign: 'center',
+        color: constants_1.palette.textPrimary,
+        borderBottom: '1px solid ' + constants_1.palette.borderLight,
+        outline: 'none',
+        ...constants_1.textStyle,
+        $nest: {
             [`@media screen and (max-width: ${constants_1.BP.sm}px)`]: {
                 minWidth: '310px',
                 margin: '0 10px 20px 10px',
                 textAlign: 'center',
                 padding: '0 10px',
             },
-        } }),
+        },
+    },
     empresas: {
         width: '100%',
         maxWidth: '484px',
@@ -1790,7 +2062,13 @@ const style = {
         flexWrap: 'wrap',
         justifyContent: 'center',
     },
-    pageNumber: Object.assign({ margin: '2px', padding: '5px 7px', borderRadius: '4px', textDecoration: 'underline' }, fractal_core_1.clickable, { $nest: {
+    pageNumber: {
+        margin: '2px',
+        padding: '5px 7px',
+        borderRadius: '4px',
+        textDecoration: 'underline',
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 backgroundColor: constants_1.palette.shadowLight,
             },
@@ -1799,7 +2077,8 @@ const style = {
                 fontSize: '20px',
                 textDecoration: 'none',
             },
-        } }),
+        },
+    },
     pageNumberActive: {
         backgroundColor: constants_1.palette.shadowLight,
     },
@@ -1820,11 +2099,22 @@ const style = {
         justifyContent: 'center',
         alignItems: 'center',
     },
-    moreRandomBtn: Object.assign({ padding: '8px' }, constants_1.textStyle, { fontSize: '20px', border: '1px solid ' + constants_1.palette.borderLight, borderRadius: '4px', backgroundColor: 'white', color: constants_1.palette.textSecondary, outline: 'none' }, fractal_core_1.clickable, { $nest: {
+    moreRandomBtn: {
+        padding: '8px',
+        ...constants_1.textStyle,
+        fontSize: '20px',
+        border: '1px solid ' + constants_1.palette.borderLight,
+        borderRadius: '4px',
+        backgroundColor: 'white',
+        color: constants_1.palette.textSecondary,
+        outline: 'none',
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 backgroundColor: constants_1.palette.shadowLight,
             },
-        } }),
+        },
+    },
 };
 exports.groups = { style };
 //# sourceMappingURL=Main.js.map
@@ -1859,7 +2149,7 @@ exports.inputs = F => ({
     setFilter: async ([filterName, text]) => { },
     toSite: async (s) => {
         let id = utils_1.strToLink(s.name);
-        await F.runIt(['route', ['/' + id, s]]);
+        await F.task('route', ['/' + id, s]);
     },
 });
 exports.actions = {
@@ -2011,7 +2301,15 @@ const style = {
             width: '100%',
         },
     },
-    link: Object.assign({ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '5px 8px', textDecoration: 'none', borderRadius: '4px' }, fractal_core_1.clickable, { $nest: {
+    link: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '5px 8px',
+        textDecoration: 'none',
+        borderRadius: '4px',
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 backgroundColor: constants_1.palette.shadowLight,
             },
@@ -2020,7 +2318,8 @@ const style = {
                 padding: '8px 8px',
                 textAlign: 'center',
             },
-        } }),
+        },
+    },
     webpage: {
         color: constants_1.palette.primary,
     },
@@ -2030,27 +2329,54 @@ const style = {
     user: {
         color: constants_1.palette.textTertiary,
     },
-    places: Object.assign({ marginTop: '8px', marginBottom: '2px', padding: '4px 6px', borderRadius: '4px', fontSize: '14px', color: constants_1.palette.textTertiary }, fractal_core_1.clickable, { $nest: {
+    places: {
+        marginTop: '8px',
+        marginBottom: '2px',
+        padding: '4px 6px',
+        borderRadius: '4px',
+        fontSize: '14px',
+        color: constants_1.palette.textTertiary,
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 backgroundColor: constants_1.palette.shadowLight,
             },
-        } }),
+        },
+    },
     tags: {
         maxWidth: '85%',
         display: 'flex',
         justifyContent: 'center',
         flexWrap: 'wrap',
     },
-    tag: Object.assign({ margin: '3px', padding: '3px', borderRadius: '4px', fontSize: '14px', color: constants_1.palette.textTertiary, border: '1px solid ' + constants_1.palette.borderGrey }, fractal_core_1.clickable, { $nest: {
+    tag: {
+        margin: '3px',
+        padding: '3px',
+        borderRadius: '4px',
+        fontSize: '14px',
+        color: constants_1.palette.textTertiary,
+        border: '1px solid ' + constants_1.palette.borderGrey,
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 backgroundColor: constants_1.palette.shadowLight,
             },
-        } }),
-    moreLink: Object.assign({ position: 'absolute', bottom: '0px', right: '0px', fontSize: '14px', color: constants_1.palette.textTertiary, textDecoration: 'none' }, fractal_core_1.clickable, { $nest: {
+        },
+    },
+    moreLink: {
+        position: 'absolute',
+        bottom: '0px',
+        right: '0px',
+        fontSize: '14px',
+        color: constants_1.palette.textTertiary,
+        textDecoration: 'none',
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 textDecoration: 'underline',
             },
-        } }),
+        },
+    },
 };
 exports.groups = { style };
 //# sourceMappingURL=Company.js.map
@@ -2066,10 +2392,12 @@ const constants_1 = require("../constants");
 const NewCompany = require("./NewCompany");
 const ModifyCompany = require("./ModifyCompany");
 const Company = require("../common/Company");
+const JoinToSee = require("../common/JoinToSee");
 const alertNoPanic = () => alert('Algo esta mal, estoy trabajando para solucionarlo');
 exports.components = {
     NewCompany,
     ModifyCompany,
+    JoinToSee,
 };
 exports.state = {
     fetched: false,
@@ -2090,7 +2418,6 @@ exports.inputs = F => ({
             await F.toIt('fetchCompanies');
         }
     },
-    login: async () => { },
     logout: async () => await F.toAct('SetToken', ''),
     setTokenAndProfile: async ([token, profile]) => {
         await F.toAct('SetToken', token);
@@ -2199,13 +2526,7 @@ const view = F => async (s) => {
                     ]),
                 ]),
         ])
-        : view_1.h('article', { class: { [style.base]: true } }, [
-            view_1.h('div', { class: { [style.title]: true } }, 'Bienvenido!'),
-            view_1.h('button', {
-                class: { [style.login]: true },
-                on: { click: F.in('login') },
-            }, 'Entrar'),
-        ]);
+        : await F.vw('JoinToSee');
 };
 exports.interfaces = { view };
 const style = {
@@ -2247,7 +2568,6 @@ const style = {
         textAlign: 'center',
         fontSize: '18px',
     },
-    login: fractal_core_1.deepmerge(constants_1.buttonPrimaryStyle, { width: '130px' }),
     addCompanyBtn: constants_1.buttonPrimaryStyle,
     companies: {
         marginTop: '30px',
@@ -2283,12 +2603,24 @@ const style = {
             },
         },
     },
-    modifyCompanyBtn: Object.assign({ position: 'absolute', bottom: '4px', left: '2px', width: '35px', height: '35px', padding: '3px', fill: constants_1.palette.primary, border: '1px solid rgba(0, 0, 0, 0)', borderRadius: '4px' }, fractal_core_1.clickable, { $nest: {
+    modifyCompanyBtn: {
+        position: 'absolute',
+        bottom: '4px',
+        left: '2px',
+        width: '35px',
+        height: '35px',
+        padding: '3px',
+        fill: constants_1.palette.primary,
+        border: '1px solid rgba(0, 0, 0, 0)',
+        borderRadius: '4px',
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 fill: constants_1.palette.primaryLight,
                 border: '1px solid ' + constants_1.palette.borderLight,
             },
-        } }),
+        },
+    },
 };
 exports.groups = { style };
 //# sourceMappingURL=index.js.map
@@ -2427,7 +2759,16 @@ const style = {
             },
         },
     },
-    container: Object.assign({ width: '100%', height: '100%', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'scroll' }, constants_1.scrollBar),
+    container: {
+        width: '100%',
+        height: '100%',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        overflowY: 'scroll',
+        ...constants_1.scrollBar,
+    },
     emailForm: {
         flexShrink: 0,
         display: 'flex',
@@ -2462,7 +2803,19 @@ const style = {
         marginRight: '35px',
     }),
     addCompanyBtn: constants_1.buttonPrimaryStyle,
-    closeBtn: Object.assign({ position: 'absolute', right: '-12px', top: '-12px', width: '24px', height: '24px', fontSize: '16px', borderRadius: '50%', background: 'white', boxShadow: '0 0 1px 1px ' + constants_1.palette.borderLight }, fractal_core_1.clickable, fractal_core_1.absoluteCenter),
+    closeBtn: {
+        position: 'absolute',
+        right: '-12px',
+        top: '-12px',
+        width: '24px',
+        height: '24px',
+        fontSize: '16px',
+        borderRadius: '50%',
+        background: 'white',
+        boxShadow: '0 0 1px 1px ' + constants_1.palette.borderLight,
+        ...fractal_core_1.clickable,
+        ...fractal_core_1.absoluteCenter,
+    },
 };
 exports.groups = { style };
 //# sourceMappingURL=NewCompany.js.map
@@ -2773,7 +3126,10 @@ const view = F => async (s) => {
                 focus: F.in('setFocus', true),
                 blur: F.in('setFocus', false),
             },
-            attrs: Object.assign({ type: 'text' }, s.attrs),
+            attrs: {
+                type: 'text',
+                ...s.attrs,
+            },
         }),
         view_1.h('div', { class: {
                 [style.lineContainer]: true,
@@ -2804,8 +3160,29 @@ const style = {
         position: 'relative',
         margin: '10px',
     },
-    input: Object.assign({ position: 'relative', width: '100%', zIndex: 2, padding: '15px 0px 4px 0px', fontSize: '18px', outline: 'none', border: 'none', backgroundColor: 'rgba(0, 0, 0, 0)' }, constants_1.textStyle),
-    hint: Object.assign({ position: 'absolute', left: '9px', top: '15px', padding: '0 4px 4px 0', fontSize: '18px', textRendering: 'geometricPrecision', transition: 'transform .2s', transformOrigin: 'left top' }, constants_1.textStyle, { color: constants_1.palette.textTertiary }),
+    input: {
+        position: 'relative',
+        width: '100%',
+        zIndex: 2,
+        padding: '15px 0px 4px 0px',
+        fontSize: '18px',
+        outline: 'none',
+        border: 'none',
+        backgroundColor: 'rgba(0, 0, 0, 0)',
+        ...constants_1.textStyle,
+    },
+    hint: {
+        position: 'absolute',
+        left: '9px',
+        top: '15px',
+        padding: '0 4px 4px 0',
+        fontSize: '18px',
+        textRendering: 'geometricPrecision',
+        transition: 'transform .2s',
+        transformOrigin: 'left top',
+        ...constants_1.textStyle,
+        color: constants_1.palette.textTertiary,
+    },
     hintActive: {
         transform: 'translate(-9px, -15px) scale(0.67)',
         padding: '0',
@@ -2913,8 +3290,29 @@ const style = {
         position: 'relative',
         margin: '10px',
     },
-    input: Object.assign({ position: 'relative', width: '100%', zIndex: 2, padding: '15px 0px 4px 0px', fontSize: '18px', outline: 'none', border: 'none', backgroundColor: 'rgba(0, 0, 0, 0)' }, constants_1.textStyle),
-    hint: Object.assign({ position: 'absolute', left: '9px', top: '15px', padding: '0 4px 4px 0', fontSize: '18px', textRendering: 'geometricPrecision', transition: 'transform .2s', transformOrigin: 'left top' }, constants_1.textStyle, { color: constants_1.palette.textTertiary }),
+    input: {
+        position: 'relative',
+        width: '100%',
+        zIndex: 2,
+        padding: '15px 0px 4px 0px',
+        fontSize: '18px',
+        outline: 'none',
+        border: 'none',
+        backgroundColor: 'rgba(0, 0, 0, 0)',
+        ...constants_1.textStyle,
+    },
+    hint: {
+        position: 'absolute',
+        left: '9px',
+        top: '15px',
+        padding: '0 4px 4px 0',
+        fontSize: '18px',
+        textRendering: 'geometricPrecision',
+        transition: 'transform .2s',
+        transformOrigin: 'left top',
+        ...constants_1.textStyle,
+        color: constants_1.palette.textTertiary,
+    },
     hintActive: {
         transform: 'translate(-9px, -15px) scale(0.67)',
         padding: '0',
@@ -3071,7 +3469,16 @@ const style = {
             },
         },
     },
-    container: Object.assign({ width: '100%', height: '100%', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'scroll' }, constants_1.scrollBar),
+    container: {
+        width: '100%',
+        height: '100%',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        overflowY: 'scroll',
+        ...constants_1.scrollBar,
+    },
     emailForm: {
         flexShrink: 0,
         display: 'flex',
@@ -3106,10 +3513,72 @@ const style = {
         marginRight: '35px',
     }),
     saveCompanyBtn: constants_1.buttonPrimaryStyle,
-    closeBtn: Object.assign({ position: 'absolute', right: '-12px', top: '-12px', width: '24px', height: '24px', fontSize: '16px', borderRadius: '50%', background: 'white', boxShadow: '0 0 1px 1px ' + constants_1.palette.borderLight }, fractal_core_1.clickable, fractal_core_1.absoluteCenter),
+    closeBtn: {
+        position: 'absolute',
+        right: '-12px',
+        top: '-12px',
+        width: '24px',
+        height: '24px',
+        fontSize: '16px',
+        borderRadius: '50%',
+        background: 'white',
+        boxShadow: '0 0 1px 1px ' + constants_1.palette.borderLight,
+        ...fractal_core_1.clickable,
+        ...fractal_core_1.absoluteCenter,
+    },
 };
 exports.groups = { style };
 //# sourceMappingURL=ModifyCompany.js.map
+});
+___scope___.file("app/Root/common/JoinToSee.js", function(exports, require, module, __filename, __dirname){
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const fractal_core_1 = require("fractal-core");
+const view_1 = require("fractal-core/interfaces/view");
+const constants_1 = require("../constants");
+exports.state = {};
+exports.inputs = F => ({
+    login: async () => {
+        F.emit('login');
+    },
+});
+exports.actions = {};
+const view = F => async (s) => {
+    let style = fractal_core_1.getStyle(F);
+    return view_1.h('article', {
+        key: F.ctx.name,
+        class: style('base'),
+    }, [
+        view_1.h('div', { class: style('title') }, 'Bienvenido!'),
+        view_1.h('button', {
+            class: style('loginBtn'),
+            on: { click: F.in('login') },
+        }, 'Entrar'),
+    ]);
+};
+exports.interfaces = { view };
+const style = {
+    base: {
+        flexShrink: 0,
+        width: '100%',
+        minHeight: 'calc(100% - 249px)',
+        paddingBottom: '50px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+    },
+    title: {
+        margin: '30px 0 25px 0',
+        textAlign: 'center',
+        fontSize: '28px',
+        fontWeight: 'normal',
+        color: constants_1.palette.secondary,
+    },
+    loginBtn: fractal_core_1.deepmerge(constants_1.buttonPrimaryStyle, { width: '130px' }),
+};
+exports.groups = { style };
+//# sourceMappingURL=JoinToSee.js.map
 });
 ___scope___.file("app/Root/Admin/index.js", function(exports, require, module, __filename, __dirname){
 
@@ -3345,7 +3814,7 @@ exports.inputs = F => ({
         await F.toAct('SetState', state);
     },
     toSite: async (route) => {
-        await F.runIt(['route', [route]]);
+        await F.task('route', [route]);
     },
 });
 exports.actions = {
@@ -3400,12 +3869,28 @@ const view = F => async (s) => {
 };
 exports.interfaces = { view };
 const style = {
-    base: Object.assign({ position: 'relative', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'auto' }, constants_1.textStyle),
-    linkNormal: Object.assign({ padding: '5px', fontSize: '14px', color: constants_1.palette.textTertiary, textDecoration: 'none' }, fractal_core_1.clickable, { $nest: {
+    base: {
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        overflow: 'auto',
+        ...constants_1.textStyle,
+    },
+    linkNormal: {
+        padding: '5px',
+        fontSize: '14px',
+        color: constants_1.palette.textTertiary,
+        textDecoration: 'none',
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 textDecoration: 'underline',
             },
-        } }),
+        },
+    },
     toMainPage: {
         position: 'absolute',
         top: '0px',
@@ -3453,7 +3938,14 @@ const style = {
             },
         },
     },
-    link: Object.assign({ color: constants_1.palette.textTertiary, padding: '5px 8px', textDecoration: 'none', fontSize: '20px', borderRadius: '4px' }, fractal_core_1.clickable, { $nest: {
+    link: {
+        color: constants_1.palette.textTertiary,
+        padding: '5px 8px',
+        textDecoration: 'none',
+        fontSize: '20px',
+        borderRadius: '4px',
+        ...fractal_core_1.clickable,
+        $nest: {
             '&:hover': {
                 backgroundColor: constants_1.palette.shadowLight,
             },
@@ -3462,7 +3954,8 @@ const style = {
                 padding: '8px 8px',
                 textAlign: 'center',
             },
-        } }),
+        },
+    },
     coloredLink: {
         color: constants_1.palette.primary,
     },
@@ -3492,11 +3985,187 @@ const style = {
 exports.groups = { style };
 //# sourceMappingURL=Site.js.map
 });
-return ___scope___.entry = "server/index.ts";
+___scope___.file("app/Root/Stats.js", function(exports, require, module, __filename, __dirname){
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const fractal_core_1 = require("fractal-core");
+const view_1 = require("fractal-core/interfaces/view");
+const JoinToSee = require("./common/JoinToSee");
+const Chart = require("./common/Chart");
+exports.state = {
+    token: '',
+    charts: [],
+    _nest: { JoinToSee },
+    _compUpdated: false,
+};
+exports.inputs = F => ({
+    setActive: async () => {
+        const token = localStorage.getItem('token');
+        F.set('token', token);
+        if (!token) {
+            return;
+        }
+        const response = await fetch('https://1ec8c733-54bd-44c9-aafd-cd14edb80cf1-bluemix.cloudant.com/startups/stats')
+            .then(r => r.json());
+        F.toAct('AddCharts', response.list);
+    },
+});
+exports.actions = {
+    AddCharts: stats => s => {
+        for (let statName in stats) {
+            let stat = stats[statName];
+            s._nest[statName] = fractal_core_1.comp(Chart, {
+                state: {
+                    title: stat.title,
+                    type: stat.type,
+                    labels: stat.labels,
+                    data: stat.data,
+                    backgroundColor: stat.backgroundColor,
+                },
+            });
+            s.charts.push(statName);
+        }
+        s._compUpdated = true;
+        return s;
+    },
+};
+const view = F => async (s) => {
+    let style = fractal_core_1.getStyle(F);
+    return s.token ? view_1.h('div', {
+        key: F.ctx.name,
+        class: style('base'),
+    }, [
+        view_1.h('div', { class: style('title') }, 'Estadísticas de las Startups Digitales'),
+        view_1.h('div', { class: style('charts') }, await fractal_core_1.mapAsync(s.charts, async (chartName) => view_1.h('div', { class: style('chart') }, [
+            await F.vw(chartName)
+        ]))),
+    ]) : await F.vw('JoinToSee');
+};
+exports.interfaces = { view };
+const style = {
+    base: {
+        flexShrink: 0,
+        minHeight: 'calc(100% - 249px)',
+        paddingBottom: '50px',
+    },
+    title: {
+        padding: '15px 10px',
+        textAlign: 'center',
+        fontSize: '32px',
+    },
+    charts: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+    },
+    chart: {
+        margin: '10px',
+        width: '100%',
+        maxWidth: '660px',
+        flexShrink: 0,
+    }
+};
+exports.groups = { style };
+//# sourceMappingURL=Stats.js.map
+});
+___scope___.file("app/Root/common/Chart.js", function(exports, require, module, __filename, __dirname){
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const fractal_core_1 = require("fractal-core");
+const view_1 = require("fractal-core/interfaces/view");
+const Chart = require('chart.js');
+const chartTypeDictionary = {
+    horizontalBar: 'Barras Horizontales',
+    pie: 'Pastel',
+    bar: 'Barras',
+};
+const chartTypes = Object.keys(chartTypeDictionary);
+const chartTypeStrings = Object.values(chartTypeDictionary);
+exports.state = {
+    title: '',
+    type: '',
+    labels: [],
+    data: [],
+    backgroundColor: [],
+    chart: -1,
+};
+const createConfig = (s) => fractal_core_1.clone({
+    type: s.type,
+    data: {
+        labels: s.labels,
+        datasets: [{ label: s.title, data: s.data, backgroundColor: s.backgroundColor }],
+    },
+    options: s.type !== 'pie' ? {
+        legend: { display: false },
+    } : {},
+});
+exports.inputs = F => ({
+    init: async () => {
+        let s = F.stateOf();
+        setTimeout(() => {
+            const chart = new Chart(F.ctx.id, createConfig(s));
+            F.set('chart', chart);
+        }, 150);
+    },
+    setType: async (selectedIndex) => {
+        let s = F.stateOf();
+        await F.set('type', chartTypes[selectedIndex]);
+        if (s.chart !== -1) {
+            s.chart.destroy();
+        }
+        await F.set('chart', new Chart(F.ctx.id, createConfig(s)));
+    },
+});
+exports.actions = {};
+const view = F => async (s) => {
+    let style = fractal_core_1.getStyle(F);
+    return view_1.h('div', {
+        key: F.ctx.name,
+        class: style('base'),
+    }, [
+        view_1.h('select', {
+            class: style('type'),
+            on: { change: F.in('setType', fractal_core_1._, ['target', 'selectedIndex']) },
+        }, chartTypeStrings.map((op, idx) => view_1.h('option', {
+            props: s.type === chartTypes[idx] ? { selected: 'selected' } : {},
+        }, op))),
+        view_1.h('div', { class: style('title') }, s.title),
+        view_1.h('canvas', { attrs: { id: F.ctx.id, width: '400', height: '400' } }),
+    ]);
+};
+exports.interfaces = { view };
+const style = {
+    base: {
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        padding: '30px 20px 30px 20px',
+        border: '1px dashed grey',
+    },
+    title: {
+        paddingBottom: '30px',
+        textAlign: 'center',
+        fontSize: '27px',
+    },
+    type: {
+        position: 'absolute',
+        right: '4px',
+        top: '4px',
+        padding: '3px',
+        background: 'none',
+        fontSize: '12px',
+    },
+};
+exports.groups = { style };
+//# sourceMappingURL=Chart.js.map
+});
+return ___scope___.entry = "server/index.js";
 });
 FuseBox.target = "server"
 
 FuseBox.import("default/server/index.js");
 FuseBox.main("default/server/index.js");
 })
-(function(e){function r(e){var r=e.charCodeAt(0),n=e.charCodeAt(1);if((p||58!==n)&&(r>=97&&r<=122||64===r)){if(64===r){var t=e.split("/"),i=t.splice(2,t.length).join("/");return[t[0]+"/"+t[1],i||void 0]}var o=e.indexOf("/");if(o===-1)return[e];var a=e.substring(0,o),u=e.substring(o+1);return[a,u]}}function n(e){return e.substring(0,e.lastIndexOf("/"))||"./"}function t(){for(var e=[],r=0;r<arguments.length;r++)e[r]=arguments[r];for(var n=[],t=0,i=arguments.length;t<i;t++)n=n.concat(arguments[t].split("/"));for(var o=[],t=0,i=n.length;t<i;t++){var a=n[t];a&&"."!==a&&(".."===a?o.pop():o.push(a))}return""===n[0]&&o.unshift(""),o.join("/")||(o.length?"/":".")}function i(e){var r=e.match(/\.(\w{1,})$/);return r&&r[1]?e:e+".js"}function o(e){if(p){var r,n=document,t=n.getElementsByTagName("head")[0];/\.css$/.test(e)?(r=n.createElement("link"),r.rel="stylesheet",r.type="text/css",r.href=e):(r=n.createElement("script"),r.type="text/javascript",r.src=e,r.async=!0),t.insertBefore(r,t.firstChild)}}function a(e,r){for(var n in e)e.hasOwnProperty(n)&&r(n,e[n])}function u(e){return{server:require(e)}}function f(e,n){var o=n.path||"./",a=n.pkg||"default",f=r(e);if(f&&(o="./",a=f[0],n.v&&n.v[a]&&(a=a+"@"+n.v[a]),e=f[1]),e)if(126===e.charCodeAt(0))e=e.slice(2,e.length),o="./";else if(!p&&(47===e.charCodeAt(0)||58===e.charCodeAt(1)))return u(e);var s=g[a];if(!s){if(p&&"electron"!==x.target)throw"Package not found "+a;return u(a+(e?"/"+e:""))}e=e?e:"./"+s.s.entry;var l,c=t(o,e),d=i(c),v=s.f[d];return!v&&d.indexOf("*")>-1&&(l=d),v||l||(d=t(c,"/","index.js"),v=s.f[d],v||"."!==c||(d=s.s&&s.s.entry||"index.js",v=s.f[d]),v||(d=c+".js",v=s.f[d]),v||(v=s.f[c+".jsx"]),v||(d=c+"/index.jsx",v=s.f[d])),{file:v,wildcard:l,pkgName:a,versions:s.v,filePath:c,validPath:d}}function s(e,r,n){if(void 0===n&&(n={}),!p)return r(/\.(js|json)$/.test(e)?v.require(e):"");if(n&&n.ajaxed===e)return console.error(e,"does not provide a module");var i=new XMLHttpRequest;i.onreadystatechange=function(){if(4==i.readyState)if(200==i.status){var n=i.getResponseHeader("Content-Type"),o=i.responseText;/json/.test(n)?o="module.exports = "+o:/javascript/.test(n)||(o="module.exports = "+JSON.stringify(o));var a=t("./",e);x.dynamic(a,o),r(x.import(e,{ajaxed:e}))}else console.error(e,"not found on request"),r(void 0)},i.open("GET",e,!0),i.send()}function l(e,r){var n=h[e];if(n)for(var t in n){var i=n[t].apply(null,r);if(i===!1)return!1}}function c(e,r){if(void 0===r&&(r={}),58===e.charCodeAt(4)||58===e.charCodeAt(5))return o(e);var t=f(e,r);if(t.server)return t.server;var i=t.file;if(t.wildcard){var a=new RegExp(t.wildcard.replace(/\*/g,"@").replace(/[.?*+^$[\]\\(){}|-]/g,"\\$&").replace(/@@/g,".*").replace(/@/g,"[a-z0-9$_-]+"),"i"),u=g[t.pkgName];if(u){var d={};for(var m in u.f)a.test(m)&&(d[m]=c(t.pkgName+"/"+m));return d}}if(!i){var h="function"==typeof r,x=l("async",[e,r]);if(x===!1)return;return s(e,function(e){return h?r(e):null},r)}var _=t.pkgName;if(i.locals&&i.locals.module)return i.locals.module.exports;var y=i.locals={},w=n(t.validPath);y.exports={},y.module={exports:y.exports},y.require=function(e,r){return c(e,{pkg:_,path:w,v:t.versions})},p||!v.require.main?y.require.main={filename:"./",paths:[]}:y.require.main=v.require.main;var j=[y.module.exports,y.require,y.module,t.validPath,w,_];return l("before-import",j),i.fn.apply(0,j),l("after-import",j),y.module.exports}if(e.FuseBox)return e.FuseBox;var d="undefined"!=typeof WorkerGlobalScope,p="undefined"!=typeof window&&window.navigator||d,v=p?d?{}:window:global;p&&(v.global=d?{}:window),e=p&&"undefined"==typeof __fbx__dnm__?e:module.exports;var m=p?d?{}:window.__fsbx__=window.__fsbx__||{}:v.$fsbx=v.$fsbx||{};p||(v.require=require);var g=m.p=m.p||{},h=m.e=m.e||{},x=function(){function r(){}return r.global=function(e,r){return void 0===r?v[e]:void(v[e]=r)},r.import=function(e,r){return c(e,r)},r.on=function(e,r){h[e]=h[e]||[],h[e].push(r)},r.exists=function(e){try{var r=f(e,{});return void 0!==r.file}catch(e){return!1}},r.remove=function(e){var r=f(e,{}),n=g[r.pkgName];n&&n.f[r.validPath]&&delete n.f[r.validPath]},r.main=function(e){return this.mainFile=e,r.import(e,{})},r.expose=function(r){var n=function(n){var t=r[n].alias,i=c(r[n].pkg);"*"===t?a(i,function(r,n){return e[r]=n}):"object"==typeof t?a(t,function(r,n){return e[n]=i[r]}):e[t]=i};for(var t in r)n(t)},r.dynamic=function(r,n,t){this.pkg(t&&t.pkg||"default",{},function(t){t.file(r,function(r,t,i,o,a){var u=new Function("__fbx__dnm__","exports","require","module","__filename","__dirname","__root__",n);u(!0,r,t,i,o,a,e)})})},r.flush=function(e){var r=g.default;for(var n in r.f)e&&!e(n)||delete r.f[n].locals},r.pkg=function(e,r,n){if(g[e])return n(g[e].s);var t=g[e]={};return t.f={},t.v=r,t.s={file:function(e,r){return t.f[e]={fn:r}}},n(t.s)},r.addPlugin=function(e){this.plugins.push(e)},r.packages=g,r.isBrowser=p,r.isServer=!p,r.plugins=[],r}();return p||(v.FuseBox=x),e.FuseBox=x}(this))
+(function(e){function r(e){var r=e.charCodeAt(0),n=e.charCodeAt(1);if((p||58!==n)&&(r>=97&&r<=122||64===r)){if(64===r){var t=e.split("/"),i=t.splice(2,t.length).join("/");return[t[0]+"/"+t[1],i||void 0]}var o=e.indexOf("/");if(o===-1)return[e];var a=e.substring(0,o),u=e.substring(o+1);return[a,u]}}function n(e){return e.substring(0,e.lastIndexOf("/"))||"./"}function t(){for(var e=[],r=0;r<arguments.length;r++)e[r]=arguments[r];for(var n=[],t=0,i=arguments.length;t<i;t++)n=n.concat(arguments[t].split("/"));for(var o=[],t=0,i=n.length;t<i;t++){var a=n[t];a&&"."!==a&&(".."===a?o.pop():o.push(a))}return""===n[0]&&o.unshift(""),o.join("/")||(o.length?"/":".")}function i(e){var r=e.match(/\.(\w{1,})$/);return r&&r[1]?e:e+".js"}function o(e){if(p){var r,n=document,t=n.getElementsByTagName("head")[0];/\.css$/.test(e)?(r=n.createElement("link"),r.rel="stylesheet",r.type="text/css",r.href=e):(r=n.createElement("script"),r.type="text/javascript",r.src=e,r.async=!0),t.insertBefore(r,t.firstChild)}}function a(e,r){for(var n in e)e.hasOwnProperty(n)&&r(n,e[n])}function u(e){return{server:require(e)}}function f(e,n){var o=n.path||"./",a=n.pkg||"default",f=r(e);if(f&&(o="./",a=f[0],n.v&&n.v[a]&&(a=a+"@"+n.v[a]),e=f[1]),e)if(126===e.charCodeAt(0))e=e.slice(2,e.length),o="./";else if(!p&&(47===e.charCodeAt(0)||58===e.charCodeAt(1)))return u(e);var s=h[a];if(!s){if(p&&"electron"!==_.target)throw"Package not found "+a;return u(a+(e?"/"+e:""))}e=e?e:"./"+s.s.entry;var l,c=t(o,e),d=i(c),v=s.f[d];return!v&&d.indexOf("*")>-1&&(l=d),v||l||(d=t(c,"/","index.js"),v=s.f[d],v||"."!==c||(d=s.s&&s.s.entry||"index.js",v=s.f[d]),v||(d=c+".js",v=s.f[d]),v||(v=s.f[c+".jsx"]),v||(d=c+"/index.jsx",v=s.f[d])),{file:v,wildcard:l,pkgName:a,versions:s.v,filePath:c,validPath:d}}function s(e,r,n){if(void 0===n&&(n={}),!p)return r(/\.(js|json)$/.test(e)?m.require(e):"");if(n&&n.ajaxed===e)return console.error(e,"does not provide a module");var i=new XMLHttpRequest;i.onreadystatechange=function(){if(4==i.readyState)if(200==i.status){var n=i.getResponseHeader("Content-Type"),o=i.responseText;/json/.test(n)?o="module.exports = "+o:/javascript/.test(n)||(o="module.exports = "+JSON.stringify(o));var a=t("./",e);_.dynamic(a,o),r(_.import(e,{ajaxed:e}))}else console.error(e,"not found on request"),r(void 0)},i.open("GET",e,!0),i.send()}function l(e,r){var n=x[e];if(n)for(var t in n){var i=n[t].apply(null,r);if(i===!1)return!1}}function c(e){return null!==e&&["function","object","array"].indexOf(typeof e)>-1&&void 0===e.default?Object.isFrozen(e)?e.default=e:Object.defineProperty(e,"default",{value:e,writable:!0,enumerable:!1}):void 0}function d(e,r){if(void 0===r&&(r={}),58===e.charCodeAt(4)||58===e.charCodeAt(5))return o(e);var t=f(e,r);if(t.server)return t.server;var i=t.file;if(t.wildcard){var a=new RegExp(t.wildcard.replace(/\*/g,"@").replace(/[.?*+^$[\]\\(){}|-]/g,"\\$&").replace(/@@/g,".*").replace(/@/g,"[a-z0-9$_-]+"),"i"),u=h[t.pkgName];if(u){var v={};for(var g in u.f)a.test(g)&&(v[g]=d(t.pkgName+"/"+g));return v}}if(!i){var x="function"==typeof r,y=l("async",[e,r]);if(y===!1)return;return s(e,function(e){return x?r(e):null},r)}var w=t.pkgName;if(i.locals&&i.locals.module)return i.locals.module.exports;var b=i.locals={},j=n(t.validPath);b.exports={},b.module={exports:b.exports},b.require=function(e,r){var n=d(e,{pkg:w,path:j,v:t.versions});return _.sdep&&c(n),n},p||!m.require.main?b.require.main={filename:"./",paths:[]}:b.require.main=m.require.main;var k=[b.module.exports,b.require,b.module,t.validPath,j,w];return l("before-import",k),i.fn.apply(k[0],k),l("after-import",k),b.module.exports}if(e.FuseBox)return e.FuseBox;var v="undefined"!=typeof WorkerGlobalScope,p="undefined"!=typeof window&&window.navigator||v,m=p?v?{}:window:global;p&&(m.global=v?{}:window),e=p&&"undefined"==typeof __fbx__dnm__?e:module.exports;var g=p?v?{}:window.__fsbx__=window.__fsbx__||{}:m.$fsbx=m.$fsbx||{};p||(m.require=require);var h=g.p=g.p||{},x=g.e=g.e||{},_=function(){function r(){}return r.global=function(e,r){return void 0===r?m[e]:void(m[e]=r)},r.import=function(e,r){return d(e,r)},r.on=function(e,r){x[e]=x[e]||[],x[e].push(r)},r.exists=function(e){try{var r=f(e,{});return void 0!==r.file}catch(e){return!1}},r.remove=function(e){var r=f(e,{}),n=h[r.pkgName];n&&n.f[r.validPath]&&delete n.f[r.validPath]},r.main=function(e){return this.mainFile=e,r.import(e,{})},r.expose=function(r){var n=function(n){var t=r[n].alias,i=d(r[n].pkg);"*"===t?a(i,function(r,n){return e[r]=n}):"object"==typeof t?a(t,function(r,n){return e[n]=i[r]}):e[t]=i};for(var t in r)n(t)},r.dynamic=function(r,n,t){this.pkg(t&&t.pkg||"default",{},function(t){t.file(r,function(r,t,i,o,a){var u=new Function("__fbx__dnm__","exports","require","module","__filename","__dirname","__root__",n);u(!0,r,t,i,o,a,e)})})},r.flush=function(e){var r=h.default;for(var n in r.f)e&&!e(n)||delete r.f[n].locals},r.pkg=function(e,r,n){if(h[e])return n(h[e].s);var t=h[e]={};return t.f={},t.v=r,t.s={file:function(e,r){return t.f[e]={fn:r}}},n(t.s)},r.addPlugin=function(e){this.plugins.push(e)},r.packages=h,r.isBrowser=p,r.isServer=!p,r.plugins=[],r}();return p||(m.FuseBox=_),e.FuseBox=_}(this))
