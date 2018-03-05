@@ -461,6 +461,7 @@ const style: StyleGroup = {
   },
   footerAuthor: {
     padding: '15px 10px',
+    textAlign: 'center',
     fontSize: '16px',
     color: palette.textTertiary,
     marginBottom: '4px',
