@@ -15,6 +15,7 @@
   "dependencies": {
     "chart.js": "^2.7.2",
     "cloudant": "^1.10.0",
+    "date-fns": "^1.29.0",
     "dotenv": "^4.0.0",
     "fractal-core": "^5.0.12",
     "google-auth-library": "0.*",

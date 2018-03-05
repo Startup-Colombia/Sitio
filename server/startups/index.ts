@@ -108,7 +108,7 @@ export const runStartupsAPI = cloudant => {
             .join(' ')
         }
         if (!value) {
-          value = 'Otro / Ninguno'
+          break
         }
         if (!stat[value]) {
           stat[value] = 1
@@ -151,7 +151,9 @@ export const runStartupsAPI = cloudant => {
     await startupsDB.insert({
       _id: 'stats',
       _rev: statsDoc._rev,
+      length: startups.length,
       list: stats,
+      timestamp: (new Date()).getTime(),
     })
 
     ctx.body = 'Se realizó la actualización con éxito'

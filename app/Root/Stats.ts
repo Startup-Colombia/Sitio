@@ -8,12 +8,16 @@ import {
   comp,
 } from 'fractal-core'
 import { View, h } from 'fractal-core/interfaces/view'
+import { palette } from './constants'
+import * as format from 'date-fns/format'
+import * as es from 'date-fns/locale/es'
 
 import * as JoinToSee from './common/JoinToSee'
 import * as Chart from './common/Chart'
-import { palette } from './constants';
 
 export const state = {
+  num: 0,
+  lastUpdated: 0,
   charts: [],
   _nest: { JoinToSee },
   _compUpdated: false,
@@ -28,6 +32,9 @@ export const inputs: Inputs = F => ({
 
     let s: S = F.stateOf()
     let len = s.charts.length
+    F.set('num', response.length)
+    const lastUpdated = format(new Date(response.timestamp), 'DD/MM/YYYY HH:MM:SS', { locale: es })
+    F.set('lastUpdated', lastUpdated)
     F.toAct('AddCharts', response.list)
     if (len > 0) {
       for(let chartName of s.charts) {
@@ -66,11 +73,10 @@ const view: View<S> = F => async s => {
   }, [
     h('div', { class: style('title') }, 'Estadísticas de las Startups Digitales'),
     h('div', { class: style('description') }, [
-      <any> 'Los datos provienen del ',
-      h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://docs.google.com/spreadsheets/d/1gn-wJpq_kxhGbByp76Sc3drJxXNDAVRiNjJy87HJ7Uc/edit#gid=0' } }, 'directorio de startups digitales'),
-      <any> ' mantenido activamente por ',
-      h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://www.facebook.com/camilotravel' } }, 'Camilo Galeano'),
-      <any> ' quien hace parte de nuestro equipo.',
+      <any> `Este estudio contempla ${s.num} Startups Digitales en Colombia puede consultar la fuente `,
+      h('a', { attrs: { target: '_blank', rel: 'noopener', href: 'https://docs.google.com/spreadsheets/d/1gn-wJpq_kxhGbByp76Sc3drJxXNDAVRiNjJy87HJ7Uc/edit#gid=0' } }, 'acá'),
+      ` dicho documento es de libre edición, mantenido y curado por lo diferentes founders de la Comunidad Startup de manera permanente.`,
+      ` Ultima actualización ${s.lastUpdated}.`,
     ]),
     h('div', { class: style('charts') },
       await mapAsync(s.charts,
