@@ -36,10 +36,7 @@ const createConfig = (s: S) => clone({
     datasets: [{ label: s.title, data: s.data, backgroundColor: s.backgroundColor }],
   },
   options: {
-    legend: {
-      display: s.type === 'pie',
-      defaultFontSize: 5,
-    },
+    maintainAspectRatio: false,
   },
 })
 
@@ -82,7 +79,16 @@ const view: View<S> = F => async s => {
       )
     ),
     h('div', { class: style('title') }, s.title),
-    h('canvas', { attrs: { id: F.ctx.id, width: '400', height: '400' } }),
+    h('div', {
+      class: style('container'),
+      style: {
+        height: s.type === 'horizontalBar' ? '700px' : '400px',
+      },
+    }, [
+      h('canvas', {
+        props: { id: F.ctx.id, width: '400', height: '400' },
+      }),
+    ]),
   ])
 }
 
@@ -92,7 +98,6 @@ const style: StyleGroup = {
   base: {
     position: 'relative',
     width: '100%',
-    height: '100%',
     padding: '30px 20px 30px 20px',
     border: '1px dashed grey',
   },
@@ -108,6 +113,9 @@ const style: StyleGroup = {
     padding: '3px',
     background: 'none',
     fontSize: '12px',
+  },
+  container: {
+    width:'100%',
   },
 }
 

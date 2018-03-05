@@ -14,7 +14,6 @@ import * as Chart from './common/Chart'
 import { palette } from './constants';
 
 export const state = {
-  token: '',
   charts: [],
   _nest: { JoinToSee },
   _compUpdated: false,
@@ -24,11 +23,6 @@ export type S = typeof state
 
 export const inputs: Inputs = F => ({
   setActive: async () => {
-    const token = localStorage.getItem('token')
-    F.set('token', token)
-    if (!token) {
-      return
-    }
     const response = await fetch('https://1ec8c733-54bd-44c9-aafd-cd14edb80cf1-bluemix.cloudant.com/startups/stats')
       .then(r => r.json())
 
@@ -66,7 +60,7 @@ export const actions: Actions<S> = {
 const view: View<S> = F => async s => {
   let style = getStyle(F)
 
-  return s.token ? h('div', {
+  return h('div', {
     key: F.ctx.name,
     class: style('base'),
   }, [
@@ -85,7 +79,7 @@ const view: View<S> = F => async s => {
         ])
       )
     ),
-  ]) : await F.vw('JoinToSee')
+  ])
 }
 
 export const interfaces: Interfaces = { view }
