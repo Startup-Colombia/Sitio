@@ -4005,7 +4005,14 @@ exports.inputs = F => ({
         }
         const response = await fetch('https://1ec8c733-54bd-44c9-aafd-cd14edb80cf1-bluemix.cloudant.com/startups/stats')
             .then(r => r.json());
+        let s = F.stateOf();
+        let len = s.charts.length;
         F.toAct('AddCharts', response.list);
+        if (len > 0) {
+            for (let chartName of s.charts) {
+                F.toChild(chartName, 'init');
+            }
+        }
     },
 });
 exports.actions = {
@@ -4070,6 +4077,7 @@ const style = {
     },
     charts: {
         marginTop: '20px',
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
