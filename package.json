@@ -31,6 +31,7 @@
     "koa-router": "^7.4.0",
     "koa-static": "^4.0.2",
     "nodemailer": "^4.4.2",
+    "randomcolor": "^0.5.3",
     "request": "^2.83.0",
     "snabbdom-to-html": "^5.0.0"
   },

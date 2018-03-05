@@ -80,6 +80,7 @@ function authenticate (network, socialToken) {
 export const inputs: Inputs = F => ({
   init: async () => {
     if (typeof window !== 'undefined') {
+      F.on('login', F.in('login'))
       let hash = extractId(window.location.href)
       let route = hash.split('/')[0]
       if ((window as any).ssrInitialized) {
@@ -208,8 +209,6 @@ export const inputs: Inputs = F => ({
     F.toChild('Main', 'setAuth', false)
     localStorage.removeItem('token')
   },
-  $Dashboard_login: async () => await F.toIt('login'),
-  $Main_login: async () => await F.toIt('login'),
 })
 
 export const actions: Actions<S> = {

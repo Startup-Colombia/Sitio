@@ -5,8 +5,6 @@ import {
   StyleGroup,
   assoc,
   Components,
-  deepmerge,
-  CSS,
   clickable,
   clone,
   mapAsync,
@@ -19,12 +17,14 @@ import { Company as CompanyType } from '../../../schema'
 import * as NewCompany from './NewCompany'
 import * as ModifyCompany from './ModifyCompany'
 import * as Company from '../common/Company'
+import * as JoinToSee from '../common/JoinToSee'
 
 const alertNoPanic = () => alert('Algo esta mal, estoy trabajando para solucionarlo')
 
 export const components: Components = {
   NewCompany,
   ModifyCompany,
+  JoinToSee,
 }
 
 export const state = {
@@ -49,7 +49,6 @@ export const inputs: Inputs = F => ({
       await F.toIt('fetchCompanies')
     }
   },
-  login: async () => {},
   logout: async () => await F.toAct('SetToken', ''),
   setTokenAndProfile: async ([token, profile]) => {
     await F.toAct('SetToken', token)
@@ -162,13 +161,7 @@ const view: View<S> = F => async s => {
       ]),
     ]),
   ])
-  : h('article', {class: { [style.base]: true }}, [
-    h('div', {class: { [style.title]: true }}, 'Bienvenido!'),
-    h('button', {
-      class: { [style.login]: true },
-      on: { click: F.in('login') },
-    }, 'Entrar'),
-  ])
+  : await F.vw('JoinToSee')
 }
 
 export const interfaces: Interfaces = { view }
@@ -212,7 +205,6 @@ const style: StyleGroup = {
     textAlign: 'center',
     fontSize: '18px',
   },
-  login: deepmerge(buttonPrimaryStyle, <CSS> { width: '130px' }),
   addCompanyBtn: buttonPrimaryStyle,
   companies: {
     marginTop: '30px',

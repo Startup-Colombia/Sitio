@@ -2,7 +2,10 @@ import * as fs from 'fs'
 import * as path from 'path'
 import Router = require('koa-router')
 import * as google from 'googleapis'
+const randomColor = require('randomcolor')
 import { authorize } from './authorize'
+
+const sheets = google.sheets('v4')
 
 let google_sheets_credentials = process.env.google_sheets_credentials
 let google_sheets_token = process.env.google_sheets_token
@@ -26,6 +29,15 @@ const fieldNames = [
   'founderAge',
 ]
 
+function getRandomColor () {
+  var letters = '0123456789ABCDEF'.split('');
+  var color = '#';
+  for (var i = 0; i < 6; i++ ) {
+      color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
 export const runStartupsAPI = cloudant => {
 
   const startupsDB = cloudant.use('startups')
@@ -39,7 +51,6 @@ export const runStartupsAPI = cloudant => {
       ctx.body = 'No estas autorizado ;)'
       return
     }
-    var sheets = google.sheets('v4')
     const rows = await new Promise((resolve, reject) => sheets.spreadsheets.values.get({
       auth: auth,
       spreadsheetId: '1gn-wJpq_kxhGbByp76Sc3drJxXNDAVRiNjJy87HJ7Uc',
@@ -74,12 +85,18 @@ export const runStartupsAPI = cloudant => {
     }
 
     // Se calculan estadisticas, conteo de ocurrencias
-    const statNames = ['sector', 'business', 'founderUniversity', 'founderAge']
+    const statsInfo = [
+      ['sector', 'Por Sectores', 'horizontalBar'],
+      ['business', 'Por Tipo de Negocio', 'bar'],
+      ['founderUniversity', 'Universidad del Fundador / CEO', 'horizontalBar'],
+      ['founderAge', 'Edad del Fundador / CEO', 'bar'],
+    ]
     const stats = {}
 
-    let startup, statName, stat, value
+    let startup, statInfo, statName, stat, value
     for (startup of startups) {
-      for (statName of statNames) {
+      for (statInfo of statsInfo) {
+        statName = statInfo[0]
         if (!(statName in stats)) {
           stats[statName] = {}
         }
@@ -94,6 +111,9 @@ export const runStartupsAPI = cloudant => {
             .map(str => str.slice(0, 1).toUpperCase() + str.slice(1, str.length))
             .join(' ')
         }
+        if (value === undefined) {
+          value = 'Otro / Ninguno'
+        }
         if (!stat[value]) {
           stat[value] = 1
         } else {
@@ -103,18 +123,28 @@ export const runStartupsAPI = cloudant => {
     }
 
     // Se preparan los datos para las gráficas
-    let labels, data
-    for (statName of statNames) {
+    let labels, data, key, tempArr, backgroundColor
+    for (statInfo of statsInfo) {
+      statName = statInfo[0]
       stat = stats[statName]
-      labels = Object.keys(stat)
-      data = (Object as any).values(stat)
+      tempArr = []
+      for (key in stat) {
+        tempArr.push([stat[key], key, randomColor()])
+      }
+      tempArr = tempArr.sort((a, b) => b[0] - a[0])
+      data = tempArr.map(el => el[0])
+      labels = tempArr.map(el => el[1])
+      backgroundColor = tempArr.map(el => el[2])
       stats[statName] = {
+        title: statInfo[1],
+        type: statInfo[2],
         labels,
         data,
+        backgroundColor,
       }
     }
 
-    // Se eliminan datos anteriores y guardan los nuevos en Cloudant
+    // Se guardan los nuevos datos en Cloudant
 
     const startupsDoc = await startupsDB.get('startups')
     startupsDoc.titles = titles
@@ -125,11 +155,10 @@ export const runStartupsAPI = cloudant => {
     await startupsDB.insert({
       _id: 'stats',
       _rev: statsDoc._rev,
-      ...stats,
+      list: stats,
     })
 
     ctx.body = 'Se realizó la actualización con éxito'
-
   })
 
   return router
